@@ -1,0 +1,11 @@
+C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\AudioProcessorAndStreamer.csproj.AssemblyReference.cache
+C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\Controls\OscilloscopeControl.baml
+C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\Controls\StatusIndicator.baml
+C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\Controls\OscilloscopeControl.g.cs
+C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\Controls\StatusIndicator.g.cs
+C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\MainWindow.g.cs
+C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\Views\ConfigurationDialog.g.cs
+C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\App.g.cs
+C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\GeneratedInternalTypeHelper.g.cs
+C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\AudioProcessorAndStreamer_MarkupCompile.cache
+C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\AudioProcessorAndStreamer_MarkupCompile.lref

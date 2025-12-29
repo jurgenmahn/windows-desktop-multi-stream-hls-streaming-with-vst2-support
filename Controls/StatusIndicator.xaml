@@ -1,0 +1,38 @@
+<UserControl x:Class="AudioProcessorAndStreamer.Controls.StatusIndicator"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="24" d:DesignWidth="100">
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <Ellipse x:Name="StatusLight"
+                 Width="12" Height="12"
+                 Margin="0,0,6,0">
+            <Ellipse.Style>
+                <Style TargetType="Ellipse">
+                    <Setter Property="Fill" Value="#606060"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsActive, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                            <Setter Property="Fill" Value="#FF3030"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Ellipse.Style>
+        </Ellipse>
+        <TextBlock x:Name="StatusText" VerticalAlignment="Center" FontWeight="SemiBold">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Setter Property="Text" Value="STOPPED"/>
+                    <Setter Property="Foreground" Value="#808080"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsActive, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                            <Setter Property="Text" Value="ON AIR"/>
+                            <Setter Property="Foreground" Value="#FF3030"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+    </StackPanel>
+</UserControl>

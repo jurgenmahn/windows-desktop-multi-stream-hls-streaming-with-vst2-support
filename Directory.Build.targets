@@ -1,0 +1,4 @@
+<Project>
+  <!-- Override VST.NET2-Host deploy target that gets blocked by Device Guard -->
+  <Target Name="VstNetDeploy" AfterTargets="Build" />
+</Project>
