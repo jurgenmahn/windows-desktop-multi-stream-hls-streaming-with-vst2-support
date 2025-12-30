@@ -1,4 +1,6 @@
 using System.IO;
+using System.Text;
+using System.Collections.Concurrent;
 using AudioProcessorAndStreamer.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -12,28 +14,55 @@ public class HlsWebServer : IAsyncDisposable
 {
     private readonly int _port;
     private readonly string _hlsDirectory;
+    private readonly AppConfiguration _config;
+    private readonly List<StreamConfiguration> _streams;
     private WebApplication? _app;
     private bool _isRunning;
 
+    // Track active listeners per stream for lazy processing
+    private readonly ConcurrentDictionary<string, int> _activeListeners = new();
+
     public bool IsRunning => _isRunning;
     public int Port => _port;
-    public string BaseUrl => $"http://localhost:{_port}";
+    public string BaseUrl => _config.GetFullBaseUrl();
 
     public event EventHandler<string>? RequestReceived;
     public event EventHandler<string>? ServerError;
+    public event EventHandler<string>? ListenerConnected;
+    public event EventHandler<string>? ListenerDisconnected;
 
     public HlsWebServer(IOptions<AppConfiguration> config)
     {
-        _port = config.Value.WebServerPort;
+        _config = config.Value;
+        _streams = _config.Streams;
+        _port = _config.WebServerPort;
         _hlsDirectory = Path.Combine(
             AppDomain.CurrentDomain.BaseDirectory,
-            config.Value.HlsOutputDirectory);
+            _config.HlsOutputDirectory);
     }
 
     public HlsWebServer(int port, string hlsDirectory)
     {
         _port = port;
         _hlsDirectory = hlsDirectory;
+        _config = new AppConfiguration();
+        _streams = new List<StreamConfiguration>();
+    }
+
+    public void UpdateStreams(List<StreamConfiguration> streams)
+    {
+        _streams.Clear();
+        _streams.AddRange(streams);
+    }
+
+    public int GetListenerCount(string streamPath)
+    {
+        return _activeListeners.GetValueOrDefault(streamPath, 0);
+    }
+
+    public bool HasListeners(string streamPath)
+    {
+        return GetListenerCount(streamPath) > 0;
     }
 
     public async Task StartAsync()
@@ -100,7 +129,7 @@ public class HlsWebServer : IAsyncDisposable
             }
         });
 
-        // Root endpoint - list available streams
+        // Root endpoint - list available streams (JSON API)
         _app.MapGet("/", async context =>
         {
             var streams = new List<object>();
@@ -126,6 +155,17 @@ public class HlsWebServer : IAsyncDisposable
             }
 
             await context.Response.WriteAsJsonAsync(new { streams });
+        });
+
+        // HTML Streams listing page
+        var streamsPagePath = _config.StreamsPagePath?.TrimEnd('/') ?? "/streams";
+        if (!streamsPagePath.StartsWith("/")) streamsPagePath = "/" + streamsPagePath;
+
+        _app.MapGet(streamsPagePath, async context =>
+        {
+            context.Response.ContentType = "text/html; charset=utf-8";
+            var html = GenerateStreamsPage();
+            await context.Response.WriteAsync(html);
         });
 
         // Health check endpoint
@@ -166,5 +206,70 @@ public class HlsWebServer : IAsyncDisposable
             await _app.DisposeAsync();
             _app = null;
         }
+    }
+
+    private string GenerateStreamsPage()
+    {
+        var baseUrl = _config.GetFullBaseUrl();
+        var sb = new StringBuilder();
+
+        sb.AppendLine("<!DOCTYPE html>");
+        sb.AppendLine("<html lang=\"en\">");
+        sb.AppendLine("<head>");
+        sb.AppendLine("  <meta charset=\"UTF-8\">");
+        sb.AppendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+        sb.AppendLine("  <title>Available Streams</title>");
+        sb.AppendLine("  <style>");
+        sb.AppendLine("    * { box-sizing: border-box; margin: 0; padding: 0; }");
+        sb.AppendLine("    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }");
+        sb.AppendLine("    h1 { color: #333; margin-bottom: 20px; }");
+        sb.AppendLine("    .streams { display: grid; gap: 16px; max-width: 800px; margin: 0 auto; }");
+        sb.AppendLine("    .stream { background: white; border-radius: 8px; padding: 16px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; color: inherit; }");
+        sb.AppendLine("    .stream:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }");
+        sb.AppendLine("    .stream-logo { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; background: #e0e0e0; display: flex; align-items: center; justify-content: center; color: #999; font-size: 24px; }");
+        sb.AppendLine("    .stream-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }");
+        sb.AppendLine("    .stream-info { flex: 1; }");
+        sb.AppendLine("    .stream-name { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 4px; }");
+        sb.AppendLine("    .stream-profiles { font-size: 12px; color: #666; }");
+        sb.AppendLine("    .profile-badge { display: inline-block; background: #e3f2fd; color: #1976d2; padding: 2px 8px; border-radius: 4px; margin-right: 4px; margin-top: 4px; }");
+        sb.AppendLine("    .play-icon { color: #0078d4; font-size: 24px; }");
+        sb.AppendLine("  </style>");
+        sb.AppendLine("</head>");
+        sb.AppendLine("<body>");
+        sb.AppendLine("  <h1>Available Streams</h1>");
+        sb.AppendLine("  <div class=\"streams\">");
+
+        foreach (var stream in _streams.Where(s => s.IsEnabled))
+        {
+            var streamUrl = $"{baseUrl}/hls/{stream.StreamPath}/master.m3u8";
+            var logoHtml = !string.IsNullOrEmpty(stream.LogoPath) && File.Exists(stream.LogoPath)
+                ? $"<img src=\"data:image/png;base64,{Convert.ToBase64String(File.ReadAllBytes(stream.LogoPath))}\" alt=\"{stream.Name}\">"
+                : "&#9835;";
+
+            sb.AppendLine($"    <a class=\"stream\" href=\"{streamUrl}\" target=\"_blank\">");
+            sb.AppendLine($"      <div class=\"stream-logo\">{logoHtml}</div>");
+            sb.AppendLine($"      <div class=\"stream-info\">");
+            sb.AppendLine($"        <div class=\"stream-name\">{System.Net.WebUtility.HtmlEncode(stream.Name)}</div>");
+            sb.AppendLine($"        <div class=\"stream-profiles\">");
+
+            foreach (var profile in stream.EncodingProfiles)
+            {
+                var bitrateLabel = profile.Bitrate >= 1000
+                    ? $"{profile.Bitrate / 1000}kbps"
+                    : $"{profile.Bitrate}bps";
+                sb.AppendLine($"          <span class=\"profile-badge\">{bitrateLabel} {profile.Codec}</span>");
+            }
+
+            sb.AppendLine($"        </div>");
+            sb.AppendLine($"      </div>");
+            sb.AppendLine($"      <div class=\"play-icon\">&#9654;</div>");
+            sb.AppendLine($"    </a>");
+        }
+
+        sb.AppendLine("  </div>");
+        sb.AppendLine("</body>");
+        sb.AppendLine("</html>");
+
+        return sb.ToString();
     }
 }

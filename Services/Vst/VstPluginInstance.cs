@@ -13,6 +13,11 @@ public class VstPluginInstance : IDisposable
     private bool _isProcessing;
     private bool _disposed;
 
+    // Audio buffers for VST processing (deinterleaved)
+    private float[][]? _inputChannelBuffers;
+    private float[][]? _outputChannelBuffers;
+    private int _allocatedBlockSize;
+
     public string PluginPath { get; }
     public string PluginName { get; }
     public int InputCount { get; }
@@ -43,20 +48,127 @@ public class VstPluginInstance : IDisposable
         _context.PluginCommandStub.Commands.SetSampleRate((float)sampleRate);
         _context.PluginCommandStub.Commands.SetBlockSize(blockSize);
 
+        // Allocate audio buffers
+        AllocateBuffers(blockSize);
+
         _context.PluginCommandStub.Commands.MainsChanged(true);
         _context.PluginCommandStub.Commands.StartProcess();
         _isProcessing = true;
     }
 
-    public void ProcessAudio(float[] interleavedInput, float[] interleavedOutput, int channels)
+    private void AllocateBuffers(int blockSize)
     {
-        // For now, bypass processing - VST.NET2 requires VstAudioBuffer which needs
-        // more complex setup. This can be implemented properly later.
-        // The plugin is still loaded and can be used for presets, editor, etc.
-        Array.Copy(interleavedInput, interleavedOutput, Math.Min(interleavedInput.Length, interleavedOutput.Length));
+        if (_allocatedBlockSize >= blockSize && _inputChannelBuffers != null)
+            return;
 
-        // TODO: Implement proper VST audio processing using VstAudioPrecisionBuffer
-        // The VST.NET2-Host library uses a different buffer management approach
+        _allocatedBlockSize = blockSize;
+
+        // Allocate input buffers (at least 2 channels for stereo)
+        int inputChannels = Math.Max(2, InputCount);
+        _inputChannelBuffers = new float[inputChannels][];
+        for (int i = 0; i < inputChannels; i++)
+        {
+            _inputChannelBuffers[i] = new float[blockSize];
+        }
+
+        // Allocate output buffers
+        int outputChannels = Math.Max(2, OutputCount);
+        _outputChannelBuffers = new float[outputChannels][];
+        for (int i = 0; i < outputChannels; i++)
+        {
+            _outputChannelBuffers[i] = new float[blockSize];
+        }
+    }
+
+    public unsafe void ProcessAudio(float[] interleavedInput, float[] interleavedOutput, int channels)
+    {
+        if (IsBypassed || _inputChannelBuffers == null || _outputChannelBuffers == null)
+        {
+            Array.Copy(interleavedInput, interleavedOutput, Math.Min(interleavedInput.Length, interleavedOutput.Length));
+            return;
+        }
+
+        int samplesPerChannel = interleavedInput.Length / channels;
+
+        // Ensure buffers are large enough
+        if (samplesPerChannel > _allocatedBlockSize)
+        {
+            AllocateBuffers(samplesPerChannel);
+        }
+
+        // Deinterleave input: LRLRLR -> L[], R[]
+        for (int ch = 0; ch < Math.Min(channels, _inputChannelBuffers.Length); ch++)
+        {
+            for (int i = 0; i < samplesPerChannel; i++)
+            {
+                _inputChannelBuffers[ch][i] = interleavedInput[i * channels + ch];
+            }
+        }
+
+        // Clear output buffers
+        for (int ch = 0; ch < _outputChannelBuffers.Length; ch++)
+        {
+            Array.Clear(_outputChannelBuffers[ch], 0, samplesPerChannel);
+        }
+
+        try
+        {
+            // Create VstAudioBuffer arrays from our managed arrays using pinned memory
+            var inputBuffers = new VstAudioBuffer[_inputChannelBuffers.Length];
+            var outputBuffers = new VstAudioBuffer[_outputChannelBuffers.Length];
+
+            // Pin the arrays and create VstAudioBuffers
+            var inputHandles = new System.Runtime.InteropServices.GCHandle[_inputChannelBuffers.Length];
+            var outputHandles = new System.Runtime.InteropServices.GCHandle[_outputChannelBuffers.Length];
+
+            try
+            {
+                for (int ch = 0; ch < _inputChannelBuffers.Length; ch++)
+                {
+                    inputHandles[ch] = System.Runtime.InteropServices.GCHandle.Alloc(_inputChannelBuffers[ch], System.Runtime.InteropServices.GCHandleType.Pinned);
+                    float* ptr = (float*)inputHandles[ch].AddrOfPinnedObject();
+                    inputBuffers[ch] = new VstAudioBuffer(ptr, samplesPerChannel, false);
+                }
+
+                for (int ch = 0; ch < _outputChannelBuffers.Length; ch++)
+                {
+                    outputHandles[ch] = System.Runtime.InteropServices.GCHandle.Alloc(_outputChannelBuffers[ch], System.Runtime.InteropServices.GCHandleType.Pinned);
+                    float* ptr = (float*)outputHandles[ch].AddrOfPinnedObject();
+                    outputBuffers[ch] = new VstAudioBuffer(ptr, samplesPerChannel, false);
+                }
+
+                // Process through VST plugin
+                _context.PluginCommandStub.Commands.ProcessReplacing(inputBuffers, outputBuffers);
+            }
+            finally
+            {
+                // Free pinned handles
+                foreach (var handle in inputHandles)
+                {
+                    if (handle.IsAllocated) handle.Free();
+                }
+                foreach (var handle in outputHandles)
+                {
+                    if (handle.IsAllocated) handle.Free();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"VST ProcessReplacing failed: {ex.Message}");
+            // On failure, copy input to output
+            Array.Copy(interleavedInput, interleavedOutput, Math.Min(interleavedInput.Length, interleavedOutput.Length));
+            return;
+        }
+
+        // Interleave output: L[], R[] -> LRLRLR
+        for (int i = 0; i < samplesPerChannel; i++)
+        {
+            for (int ch = 0; ch < Math.Min(channels, _outputChannelBuffers.Length); ch++)
+            {
+                interleavedOutput[i * channels + ch] = _outputChannelBuffers[ch][i];
+            }
+        }
     }
 
     public byte[]? GetPresetData()
@@ -80,6 +192,41 @@ public class VstPluginInstance : IDisposable
         catch
         {
             // Preset loading failed
+        }
+    }
+
+    public bool LoadPresetFromFile(string presetFilePath)
+    {
+        if (string.IsNullOrEmpty(presetFilePath) || !File.Exists(presetFilePath))
+            return false;
+
+        try
+        {
+            var presetData = File.ReadAllBytes(presetFilePath);
+            _context.PluginCommandStub.Commands.SetChunk(presetData, true);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public bool SavePresetToFile(string presetFilePath)
+    {
+        try
+        {
+            var presetData = _context.PluginCommandStub.Commands.GetChunk(true);
+            if (presetData != null)
+            {
+                File.WriteAllBytes(presetFilePath, presetData);
+                return true;
+            }
+            return false;
+        }
+        catch
+        {
+            return false;
         }
     }
 

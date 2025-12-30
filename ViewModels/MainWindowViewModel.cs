@@ -3,6 +3,8 @@ using System.IO;
 using System.Text.Json;
 using AudioProcessorAndStreamer.Views;
 using System.Windows;
+using Application = System.Windows.Application;
+using MessageBox = System.Windows.MessageBox;
 using AudioProcessorAndStreamer.Models;
 using AudioProcessorAndStreamer.Services.Streaming;
 using AudioProcessorAndStreamer.Services.Web;
@@ -18,6 +20,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly HlsWebServer _webServer;
     private readonly AppConfiguration _config;
     private readonly string _configPath;
+    private readonly string _appConfigPath;
     private bool _disposed;
 
     [ObservableProperty]
@@ -44,11 +47,52 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _webServer = webServer;
         _config = config.Value;
         _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "streams.json");
+        _appConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appconfig.json");
 
         _webServer.RequestReceived += (s, msg) =>
             System.Diagnostics.Debug.WriteLine($"[HLS] {msg}");
 
+        LoadAppConfig();
         LoadStreamsFromConfig();
+        UpdateWebServerStreams();
+    }
+
+    private void LoadAppConfig()
+    {
+        if (File.Exists(_appConfigPath))
+        {
+            try
+            {
+                var json = File.ReadAllText(_appConfigPath);
+                var savedConfig = JsonSerializer.Deserialize<AppConfiguration>(json);
+                if (savedConfig != null)
+                {
+                    _config.BaseDomain = savedConfig.BaseDomain;
+                    _config.WebServerPort = savedConfig.WebServerPort;
+                    _config.HlsOutputDirectory = savedConfig.HlsOutputDirectory;
+                    _config.LazyProcessing = savedConfig.LazyProcessing;
+                    _config.StreamsPagePath = savedConfig.StreamsPagePath;
+                    _config.VstOutputBufferSeconds = savedConfig.VstOutputBufferSeconds;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to load appconfig.json: {ex.Message}");
+            }
+        }
+    }
+
+    private void SaveAppConfig()
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(_config, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(_appConfigPath, json);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to save appconfig.json: {ex.Message}");
+        }
     }
 
     private void LoadStreamsFromConfig()
@@ -97,6 +141,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             System.Diagnostics.Debug.WriteLine($"Failed to save streams.json: {ex.Message}");
         }
+    }
+
+    private void UpdateWebServerStreams()
+    {
+        var configs = Streams.Select(s => s.Configuration).ToList();
+        _webServer.UpdateStreams(configs);
     }
 
     [RelayCommand]
@@ -153,12 +203,28 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         var config = new StreamConfiguration
         {
             Name = $"Stream {Streams.Count + 1}",
-            StreamPath = $"stream{Streams.Count + 1}"
+            StreamPath = $"stream{Streams.Count + 1}",
+            VstPlugins = new List<VstPluginConfig>
+            {
+                new VstPluginConfig
+                {
+                    PluginPath = "Plugins/vst_stereo_tool_64.dll",
+                    PluginName = "Stereo Tool",
+                    Order = 0
+                }
+            },
+            EncodingProfiles = new List<EncodingProfile>
+            {
+                new EncodingProfile { Name = "64kbps AAC", Codec = AudioCodec.Aac, Bitrate = 64000 },
+                new EncodingProfile { Name = "128kbps AAC", Codec = AudioCodec.Aac, Bitrate = 128000 },
+                new EncodingProfile { Name = "192kbps AAC", Codec = AudioCodec.Aac, Bitrate = 192000 }
+            }
         };
 
         var vm = new StreamViewModel(config, _streamManager);
         Streams.Add(vm);
         SaveStreamsToConfig();
+        UpdateWebServerStreams();
     }
 
     [RelayCommand]
@@ -170,10 +236,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         stream.Dispose();
         Streams.Remove(stream);
         SaveStreamsToConfig();
+        UpdateWebServerStreams();
     }
 
     [RelayCommand]
-    private void OpenConfiguration()
+    private async Task OpenConfigurationAsync()
     {
         var dialog = new Views.ConfigurationDialog();
         dialog.Owner = Application.Current.MainWindow;
@@ -181,12 +248,20 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         if (dialog.ShowDialog() == true && dialog.ResultStreams != null)
         {
+            // Remember running state before stopping
+            var wasServerRunning = IsServerRunning;
+            var runningStreamIds = Streams.Where(s => s.IsRunning).Select(s => s.Id).ToHashSet();
+
             // Update app config
             if (dialog.ResultConfiguration != null)
             {
                 _config.BaseDomain = dialog.ResultConfiguration.BaseDomain;
                 _config.WebServerPort = dialog.ResultConfiguration.WebServerPort;
                 _config.HlsOutputDirectory = dialog.ResultConfiguration.HlsOutputDirectory;
+                _config.LazyProcessing = dialog.ResultConfiguration.LazyProcessing;
+                _config.StreamsPagePath = dialog.ResultConfiguration.StreamsPagePath;
+                _config.VstOutputBufferSeconds = dialog.ResultConfiguration.VstOutputBufferSeconds;
+                SaveAppConfig();
             }
 
             // Stop all streams before updating
@@ -206,6 +281,19 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             }
 
             SaveStreamsToConfig();
+            UpdateWebServerStreams();
+
+            // Restore running state - restart server if it was running
+            if (wasServerRunning)
+            {
+                await StartServerAsync();
+            }
+
+            // Restart streams that were previously running (by matching IDs)
+            foreach (var stream in Streams.Where(s => runningStreamIds.Contains(s.Id)))
+            {
+                stream.StartCommand.Execute(null);
+            }
         }
     }
 

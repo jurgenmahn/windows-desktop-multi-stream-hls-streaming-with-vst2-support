@@ -30,9 +30,10 @@ public enum AudioDriverType
 
 public class VstPluginConfig
 {
-    public string PluginPath { get; set; } = string.Empty;
-    public string PluginName { get; set; } = string.Empty;
+    public string PluginPath { get; set; } = "Plugins/vst_stereo_tool_64.dll";
+    public string PluginName { get; set; } = "Stereo Tool";
     public int Order { get; set; }
     public bool IsBypassed { get; set; }
+    public string? PresetFilePath { get; set; }
     public byte[]? PresetData { get; set; }
 }

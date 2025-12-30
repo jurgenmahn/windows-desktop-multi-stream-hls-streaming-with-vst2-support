@@ -3,13 +3,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         xmlns:vm="clr-namespace:AudioProcessorAndStreamer.ViewModels"
         xmlns:infra="clr-namespace:AudioProcessorAndStreamer.Infrastructure"
+        xmlns:models="clr-namespace:AudioProcessorAndStreamer.Models"
         mc:Ignorable="d"
         Title="Stream Configuration"
         Height="600" Width="800"
         MinHeight="500" MinWidth="700"
-        Background="#2D2D30"
+        Background="#F5F5F5"
         WindowStartupLocation="CenterOwner"
         d:DataContext="{d:DesignInstance vm:ConfigurationViewModel}">
 
@@ -17,29 +19,29 @@
         <infra:NotNullToBoolConverter x:Key="NotNullToBool"/>
 
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="Foreground" Value="#333333"/>
         </Style>
 
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#3C3C3C"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#555555"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
             <Setter Property="Padding" Value="4"/>
         </Style>
 
         <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="#3C3C3C"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#555555"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
         </Style>
 
         <Style TargetType="ListBox">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="BorderBrush" Value="#555555"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
         </Style>
 
         <Style x:Key="ActionButton" TargetType="Button">
-            <Setter Property="Background" Value="#0E639C"/>
+            <Setter Property="Background" Value="#0078D4"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="12,6"/>
@@ -48,7 +50,7 @@
         </Style>
 
         <Style x:Key="SmallButton" TargetType="Button">
-            <Setter Property="Background" Value="#404040"/>
+            <Setter Property="Background" Value="#0078D4"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="8,4"/>
@@ -69,7 +71,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- Streams List -->
-        <Border Grid.Column="0" Grid.Row="0" Background="#252526" CornerRadius="4" Margin="0,0,8,0">
+        <Border Grid.Column="0" Grid.Row="0" Background="White" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4" Margin="0,0,8,0">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -84,7 +86,7 @@
                          Background="Transparent" BorderThickness="0">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Name}" Foreground="White" Padding="4"/>
+                            <TextBlock Text="{Binding Name}" Foreground="#333333" Padding="4"/>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
@@ -133,41 +135,122 @@
 
                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
                         <TextBlock Text="Sample Rate" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                        <ComboBox SelectedItem="{Binding SelectedStream.AudioInput.SampleRate}">
-                            <ComboBoxItem Content="44100"/>
-                            <ComboBoxItem Content="48000"/>
-                            <ComboBoxItem Content="96000"/>
+                        <ComboBox SelectedValue="{Binding SelectedStream.AudioInput.SampleRate}"
+                                  SelectedValuePath="Tag">
+                            <ComboBoxItem Content="44100 Hz">
+                                <ComboBoxItem.Tag>
+                                    <sys:Int32>44100</sys:Int32>
+                                </ComboBoxItem.Tag>
+                            </ComboBoxItem>
+                            <ComboBoxItem Content="48000 Hz">
+                                <ComboBoxItem.Tag>
+                                    <sys:Int32>48000</sys:Int32>
+                                </ComboBoxItem.Tag>
+                            </ComboBoxItem>
+                            <ComboBoxItem Content="96000 Hz">
+                                <ComboBoxItem.Tag>
+                                    <sys:Int32>96000</sys:Int32>
+                                </ComboBoxItem.Tag>
+                            </ComboBoxItem>
                         </ComboBox>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1">
-                        <TextBlock Text="Buffer Size" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                        <ComboBox SelectedItem="{Binding SelectedStream.AudioInput.BufferSize}">
-                            <ComboBoxItem Content="256"/>
-                            <ComboBoxItem Content="512"/>
-                            <ComboBoxItem Content="1024"/>
-                            <ComboBoxItem Content="2048"/>
+                        <TextBlock Text="Input Buffer Size" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <ComboBox SelectedValue="{Binding SelectedStream.AudioInput.BufferSize}"
+                                  SelectedValuePath="Tag">
+                            <ComboBoxItem Content="5ms (256 samples)">
+                                <ComboBoxItem.Tag>
+                                    <sys:Int32>256</sys:Int32>
+                                </ComboBoxItem.Tag>
+                            </ComboBoxItem>
+                            <ComboBoxItem Content="10ms (512 samples)">
+                                <ComboBoxItem.Tag>
+                                    <sys:Int32>512</sys:Int32>
+                                </ComboBoxItem.Tag>
+                            </ComboBoxItem>
+                            <ComboBoxItem Content="20ms (1024 samples)">
+                                <ComboBoxItem.Tag>
+                                    <sys:Int32>1024</sys:Int32>
+                                </ComboBoxItem.Tag>
+                            </ComboBoxItem>
+                            <ComboBoxItem Content="40ms (2048 samples)">
+                                <ComboBoxItem.Tag>
+                                    <sys:Int32>2048</sys:Int32>
+                                </ComboBoxItem.Tag>
+                            </ComboBoxItem>
+                            <ComboBoxItem Content="85ms (4096 samples)">
+                                <ComboBoxItem.Tag>
+                                    <sys:Int32>4096</sys:Int32>
+                                </ComboBoxItem.Tag>
+                            </ComboBoxItem>
+                            <ComboBoxItem Content="170ms (8192 samples)">
+                                <ComboBoxItem.Tag>
+                                    <sys:Int32>8192</sys:Int32>
+                                </ComboBoxItem.Tag>
+                            </ComboBoxItem>
+                            <ComboBoxItem Content="340ms (16384 samples)">
+                                <ComboBoxItem.Tag>
+                                    <sys:Int32>16384</sys:Int32>
+                                </ComboBoxItem.Tag>
+                            </ComboBoxItem>
+                            <ComboBoxItem Content="680ms (32768 samples)">
+                                <ComboBoxItem.Tag>
+                                    <sys:Int32>32768</sys:Int32>
+                                </ComboBoxItem.Tag>
+                            </ComboBoxItem>
+                            <ComboBoxItem Content="1.3s (65536 samples)">
+                                <ComboBoxItem.Tag>
+                                    <sys:Int32>65536</sys:Int32>
+                                </ComboBoxItem.Tag>
+                            </ComboBoxItem>
+                            <ComboBoxItem Content="2.7s (131072 samples)">
+                                <ComboBoxItem.Tag>
+                                    <sys:Int32>131072</sys:Int32>
+                                </ComboBoxItem.Tag>
+                            </ComboBoxItem>
                         </ComboBox>
                     </StackPanel>
                 </Grid>
 
                 <!-- VST Plugins -->
                 <TextBlock Text="VST Plugins" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                <Border Background="#252526" CornerRadius="4" Padding="8" Margin="0,0,0,12">
+                <Border Background="White" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,12">
                     <StackPanel>
                         <ItemsControl ItemsSource="{Binding SelectedStream.VstPlugins}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Margin="0,2">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="{Binding PluginName}" VerticalAlignment="Center"/>
-                                        <Button Grid.Column="1" Content="X" Style="{StaticResource SmallButton}" Width="24"
-                                                Command="{Binding DataContext.RemoveVstPluginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                CommandParameter="{Binding}"/>
-                                    </Grid>
+                                    <Border Background="#F0F0F0" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="2" Padding="8" Margin="0,2">
+                                        <StackPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding PluginName}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                                <Button Grid.Column="1" Content="X" Style="{StaticResource SmallButton}" Width="24"
+                                                        Command="{Binding DataContext.RemoveVstPluginCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </Grid>
+                                            <Grid Margin="0,6,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="Preset:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBox Grid.Column="1" Text="{Binding PresetFilePath}" IsReadOnly="True"
+                                                         VerticalAlignment="Center"/>
+                                                <Button Grid.Column="2" Content="Browse..." Style="{StaticResource SmallButton}"
+                                                        Command="{Binding DataContext.BrowseVstPresetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Grid.Column="3" Content="Clear" Style="{StaticResource SmallButton}"
+                                                        Command="{Binding DataContext.ClearVstPresetCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -179,12 +262,12 @@
 
                 <!-- Encoding Profiles -->
                 <TextBlock Text="Encoding Profiles" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                <Border Background="#252526" CornerRadius="4" Padding="8" Margin="0,0,0,12">
+                <Border Background="White" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,12">
                     <StackPanel>
                         <ItemsControl ItemsSource="{Binding SelectedStream.EncodingProfiles}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#3C3C3C" CornerRadius="2" Padding="8" Margin="0,2">
+                                    <Border Background="#F0F0F0" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="2" Padding="8" Margin="0,2">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -192,13 +275,15 @@
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Grid.Column="0" Text="{Binding Name}" Margin="0,0,8,0"/>
-                                            <ComboBox Grid.Column="1" SelectedItem="{Binding Codec}" Width="80" Margin="0,0,8,0">
-                                                <ComboBoxItem Content="Aac"/>
-                                                <ComboBoxItem Content="Mp3"/>
-                                                <ComboBoxItem Content="Opus"/>
+                                            <TextBox Grid.Column="0" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,8,0"/>
+                                            <ComboBox Grid.Column="1" Width="80" Margin="0,0,8,0"
+                                                      SelectedValue="{Binding Codec}"
+                                                      SelectedValuePath="Tag">
+                                                <ComboBoxItem Content="AAC" Tag="{x:Static models:AudioCodec.Aac}"/>
+                                                <ComboBoxItem Content="MP3" Tag="{x:Static models:AudioCodec.Mp3}"/>
+                                                <ComboBoxItem Content="Opus" Tag="{x:Static models:AudioCodec.Opus}"/>
                                             </ComboBox>
-                                            <TextBox Grid.Column="2" Text="{Binding Bitrate}" Width="80" Margin="0,0,8,0"/>
+                                            <TextBox Grid.Column="2" Text="{Binding Bitrate, UpdateSourceTrigger=PropertyChanged}" Width="80" Margin="0,0,8,0"/>
                                             <Button Grid.Column="3" Content="X" Style="{StaticResource SmallButton}" Width="24"
                                                     Command="{Binding DataContext.RemoveEncodingProfileCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"/>
@@ -237,29 +322,72 @@
                 </Grid.RowDefinitions>
 
                 <!-- Global Settings -->
-                <Border Grid.Row="0" Background="#252526" CornerRadius="4" Padding="12" Margin="0,0,0,16">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
+                <Border Grid.Row="0" Background="White" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,16">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                            <TextBlock Text="Base Domain" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding BaseDomain}"/>
-                        </StackPanel>
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Base Domain" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                                <TextBlock Text="Public URL with port (e.g., http://myradio.com:8080)" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding BaseDomain}"/>
+                            </StackPanel>
 
-                        <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                            <TextBlock Text="Web Server Port" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding WebServerPort}"/>
-                        </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                <TextBlock Text="Web Server Port" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                                <TextBlock Text="Local port for the HTTP server to listen on" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding WebServerPort}"/>
+                            </StackPanel>
 
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="HLS Output Directory" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding HlsOutputDirectory}"/>
-                        </StackPanel>
-                    </Grid>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="HLS Output Directory" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                                <TextBlock Text="Folder for HLS segment files (.ts, .m3u8)" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Text="{Binding HlsOutputDirectory}" IsReadOnly="True"/>
+                                    <Button Grid.Column="1" Content="Browse..." Style="{StaticResource SmallButton}"
+                                            Command="{Binding BrowseHlsOutputDirectoryCommand}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Streams Page Path" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                                <TextBlock Text="URL path for the HTML streams listing page" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding StreamsPagePath}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                <TextBlock Text="Output Buffer (seconds)" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                                <TextBlock Text="Smoothing buffer for VST output (0 = disabled)" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding VstOutputBufferSeconds}" PreviewTextInput="NumericTextBox_PreviewTextInput"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
+                                <CheckBox IsChecked="{Binding LazyProcessing}" Margin="0,0,0,4">
+                                    <StackPanel>
+                                        <TextBlock Text="Lazy Processing (On-Demand)" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Only process audio when listeners connect. Saves CPU but causes ~2s delay on first connect."
+                                                   FontSize="10" Foreground="#666666" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </CheckBox>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
                 </Border>
 
                 <!-- Dialog Buttons -->

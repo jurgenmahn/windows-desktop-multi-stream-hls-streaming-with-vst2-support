@@ -7,10 +7,11 @@ namespace AudioProcessorAndStreamer.Services.Audio;
 
 public class WasapiCaptureService : IAudioCaptureService
 {
-    private readonly WasapiCapture _capture;
+    private readonly IWaveIn _capture;
     private readonly WaveFormat _waveFormat;
     private bool _isCapturing;
     private bool _disposed;
+    private readonly bool _isLoopback;
 
     public event EventHandler<AudioDataEventArgs>? DataAvailable;
     public WaveFormat WaveFormat => _waveFormat;
@@ -19,6 +20,7 @@ public class WasapiCaptureService : IAudioCaptureService
     public WasapiCaptureService(AudioInputConfig config)
     {
         MMDevice? device = null;
+        _isLoopback = config.DeviceName?.Contains("(Loopback)") == true;
 
         using var enumerator = new MMDeviceEnumerator();
 
@@ -34,16 +36,39 @@ public class WasapiCaptureService : IAudioCaptureService
             }
         }
 
-        device ??= enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
+        if (device == null)
+        {
+            device = _isLoopback
+                ? enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia)
+                : enumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
+        }
 
-        _capture = new WasapiCapture(device, true, config.BufferSize);
+        if (_isLoopback)
+        {
+            _capture = new WasapiLoopbackCapture(device);
+        }
+        else
+        {
+            _capture = new WasapiCapture(device, true, config.BufferSize);
+        }
+
         _waveFormat = _capture.WaveFormat;
         _capture.DataAvailable += OnDataAvailable;
     }
 
-    public WasapiCaptureService(MMDevice device, int bufferMilliseconds = 100)
+    public WasapiCaptureService(MMDevice device, int bufferMilliseconds = 100, bool isLoopback = false)
     {
-        _capture = new WasapiCapture(device, true, bufferMilliseconds);
+        _isLoopback = isLoopback;
+
+        if (isLoopback)
+        {
+            _capture = new WasapiLoopbackCapture(device);
+        }
+        else
+        {
+            _capture = new WasapiCapture(device, true, bufferMilliseconds);
+        }
+
         _waveFormat = _capture.WaveFormat;
         _capture.DataAvailable += OnDataAvailable;
     }
@@ -94,6 +119,10 @@ public class WasapiCaptureService : IAudioCaptureService
 
         StopCapture();
         _capture.DataAvailable -= OnDataAvailable;
-        _capture.Dispose();
+
+        if (_capture is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
     }
 }

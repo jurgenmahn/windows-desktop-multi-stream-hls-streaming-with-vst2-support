@@ -4,6 +4,7 @@ using AudioProcessorAndStreamer.Services.Audio;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 namespace AudioProcessorAndStreamer.ViewModels;
 
@@ -32,6 +33,15 @@ public partial class ConfigurationViewModel : ObservableObject
     [ObservableProperty]
     private string _hlsOutputDirectory = "hls_output";
 
+    [ObservableProperty]
+    private bool _lazyProcessing = true;
+
+    [ObservableProperty]
+    private string _streamsPagePath = "/streams";
+
+    [ObservableProperty]
+    private double _vstOutputBufferSeconds = 0.5;
+
     public bool HasChanges { get; private set; }
 
     public ConfigurationViewModel()
@@ -45,6 +55,9 @@ public partial class ConfigurationViewModel : ObservableObject
         BaseDomain = config.BaseDomain;
         WebServerPort = config.WebServerPort;
         HlsOutputDirectory = config.HlsOutputDirectory;
+        LazyProcessing = config.LazyProcessing;
+        StreamsPagePath = config.StreamsPagePath;
+        VstOutputBufferSeconds = config.VstOutputBufferSeconds;
 
         Streams.Clear();
         foreach (var stream in streamConfigs)
@@ -66,7 +79,10 @@ public partial class ConfigurationViewModel : ObservableObject
         {
             BaseDomain = BaseDomain,
             WebServerPort = WebServerPort,
-            HlsOutputDirectory = HlsOutputDirectory
+            HlsOutputDirectory = HlsOutputDirectory,
+            LazyProcessing = LazyProcessing,
+            StreamsPagePath = StreamsPagePath,
+            VstOutputBufferSeconds = VstOutputBufferSeconds
         };
 
         return (config, Streams.ToList());
@@ -88,7 +104,22 @@ public partial class ConfigurationViewModel : ObservableObject
         var newStream = new StreamConfiguration
         {
             Name = $"Stream {Streams.Count + 1}",
-            StreamPath = $"stream{Streams.Count + 1}"
+            StreamPath = $"stream{Streams.Count + 1}",
+            VstPlugins = new List<VstPluginConfig>
+            {
+                new VstPluginConfig
+                {
+                    PluginPath = "Plugins/vst_stereo_tool_64.dll",
+                    PluginName = "Stereo Tool",
+                    Order = 0
+                }
+            },
+            EncodingProfiles = new List<EncodingProfile>
+            {
+                new EncodingProfile { Name = "64kbps AAC", Codec = AudioCodec.Aac, Bitrate = 64000 },
+                new EncodingProfile { Name = "128kbps AAC", Codec = AudioCodec.Aac, Bitrate = 128000 },
+                new EncodingProfile { Name = "192kbps AAC", Codec = AudioCodec.Aac, Bitrate = 192000 }
+            }
         };
 
         Streams.Add(newStream);
@@ -154,6 +185,36 @@ public partial class ConfigurationViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void BrowseVstPreset(VstPluginConfig? plugin)
+    {
+        if (plugin == null) return;
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "Select VST Preset File",
+            Filter = "Stereo Tool Presets (*.sts)|*.sts|VST Presets (*.fxp;*.fxb)|*.fxp;*.fxb|All Files (*.*)|*.*",
+            CheckFileExists = true
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            plugin.PresetFilePath = dialog.FileName;
+            HasChanges = true;
+            OnPropertyChanged(nameof(SelectedStream));
+        }
+    }
+
+    [RelayCommand]
+    private void ClearVstPreset(VstPluginConfig? plugin)
+    {
+        if (plugin == null) return;
+
+        plugin.PresetFilePath = null;
+        HasChanges = true;
+        OnPropertyChanged(nameof(SelectedStream));
+    }
+
+    [RelayCommand]
     private void AddEncodingProfile()
     {
         if (SelectedStream == null) return;
@@ -161,12 +222,17 @@ public partial class ConfigurationViewModel : ObservableObject
         var profile = new EncodingProfile
         {
             Name = $"Profile {SelectedStream.EncodingProfiles.Count + 1}",
+            Codec = AudioCodec.Aac,
             Bitrate = 128000
         };
 
         SelectedStream.EncodingProfiles.Add(profile);
         HasChanges = true;
-        OnPropertyChanged(nameof(SelectedStream));
+
+        // Force UI refresh by temporarily changing SelectedStream
+        var current = SelectedStream;
+        SelectedStream = null;
+        SelectedStream = current;
     }
 
     [RelayCommand]
@@ -196,6 +262,35 @@ public partial class ConfigurationViewModel : ObservableObject
             SelectedStream.LogoPath = dialog.FileName;
             HasChanges = true;
             OnPropertyChanged(nameof(SelectedStream));
+        }
+    }
+
+    [RelayCommand]
+    private void BrowseHlsOutputDirectory()
+    {
+        using var dialog = new System.Windows.Forms.FolderBrowserDialog
+        {
+            Description = "Select HLS Output Directory",
+            UseDescriptionForTitle = true,
+            ShowNewFolderButton = true
+        };
+
+        // Set initial directory if current value exists
+        if (!string.IsNullOrEmpty(HlsOutputDirectory))
+        {
+            var fullPath = System.IO.Path.IsPathRooted(HlsOutputDirectory)
+                ? HlsOutputDirectory
+                : System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, HlsOutputDirectory);
+            if (System.IO.Directory.Exists(fullPath))
+            {
+                dialog.SelectedPath = fullPath;
+            }
+        }
+
+        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+        {
+            HlsOutputDirectory = dialog.SelectedPath;
+            HasChanges = true;
         }
     }
 
@@ -246,6 +341,7 @@ public partial class ConfigurationViewModel : ObservableObject
                 PluginName = v.PluginName,
                 Order = v.Order,
                 IsBypassed = v.IsBypassed,
+                PresetFilePath = v.PresetFilePath,
                 PresetData = v.PresetData
             }).ToList(),
             EncodingProfiles = source.EncodingProfiles.Select(p => new EncodingProfile

@@ -61,7 +61,8 @@ public class StreamManager : IStreamManager
                 config,
                 _vstHost,
                 _ffmpegService,
-                hlsOutputDir);
+                hlsOutputDir,
+                _config.VstOutputBufferSeconds);
 
             processor.Stopped += (s, e) => OnStreamStopped(config.Id, config.Name);
 

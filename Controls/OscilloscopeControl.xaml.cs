@@ -2,16 +2,26 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Color = System.Windows.Media.Color;
+using UserControl = System.Windows.Controls.UserControl;
 
 namespace AudioProcessorAndStreamer.Controls;
 
 public partial class OscilloscopeControl : UserControl
 {
     private WriteableBitmap? _bitmap;
-    private float[] _sampleBuffer = Array.Empty<float>();
+    private float[] _writeBuffer = new float[MaxDisplaySamples];  // Audio thread writes here
+    private float[] _readBuffer = new float[MaxDisplaySamples];   // Render thread reads from here
     private readonly object _bufferLock = new();
     private int _lastWidth;
     private int _lastHeight;
+    private byte[]? _pixelBuffer;  // Cached to avoid allocations every frame
+    private int _samplesInWriteBuffer;
+    private int _samplesInReadBuffer;
+    private bool _newDataAvailable;
+
+    // Max samples to display (~25ms at 48kHz stereo)
+    private const int MaxDisplaySamples = 2400;
 
     public static readonly DependencyProperty LabelProperty =
         DependencyProperty.Register(nameof(Label), typeof(string), typeof(OscilloscopeControl),
@@ -73,39 +83,65 @@ public partial class OscilloscopeControl : UserControl
         _lastHeight = height;
 
         _bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
+        _pixelBuffer = new byte[height * width * 4];  // Pre-allocate pixel buffer
         WaveformImage.Source = _bitmap;
     }
 
     public void UpdateSamples(float[] samples)
     {
+        if (samples.Length == 0) return;
+
         lock (_bufferLock)
         {
-            _sampleBuffer = samples;
+            // Copy to write buffer
+            if (samples.Length <= MaxDisplaySamples)
+            {
+                Array.Copy(samples, 0, _writeBuffer, 0, samples.Length);
+                _samplesInWriteBuffer = samples.Length;
+            }
+            else
+            {
+                // Take only the most recent samples
+                Array.Copy(samples, samples.Length - MaxDisplaySamples, _writeBuffer, 0, MaxDisplaySamples);
+                _samplesInWriteBuffer = MaxDisplaySamples;
+            }
+            _newDataAvailable = true;
         }
     }
 
     private void OnRendering(object? sender, EventArgs e)
     {
-        if (_bitmap == null || !IsVisible) return;
+        if (_bitmap == null || _pixelBuffer == null || !IsVisible) return;
 
-        float[] samples;
+        // Swap buffers under lock if new data is available
         lock (_bufferLock)
         {
-            samples = _sampleBuffer;
+            if (_newDataAvailable)
+            {
+                // Swap write and read buffers
+                (_writeBuffer, _readBuffer) = (_readBuffer, _writeBuffer);
+                _samplesInReadBuffer = _samplesInWriteBuffer;
+                _newDataAvailable = false;
+            }
         }
 
-        RenderWaveform(samples);
+        // Now render from read buffer (safe - audio thread only writes to write buffer)
+        if (_samplesInReadBuffer > 0)
+        {
+            RenderWaveform(_readBuffer, _samplesInReadBuffer);
+        }
     }
 
-    private void RenderWaveform(float[] samples)
+    private void RenderWaveform(float[] samples, int sampleCount)
     {
-        if (_bitmap == null) return;
+        if (_bitmap == null || _pixelBuffer == null) return;
 
         int width = _bitmap.PixelWidth;
         int height = _bitmap.PixelHeight;
         int stride = width * 4;
 
-        var pixels = new byte[height * stride];
+        // Use cached buffer instead of allocating every frame
+        var pixels = _pixelBuffer;
 
         // Fill background
         byte bgR = BackgroundFillColor.R;
@@ -130,14 +166,14 @@ public partial class OscilloscopeControl : UserControl
             pixels[offset + 2] = 0x40;
         }
 
-        if (samples.Length > 0)
+        if (sampleCount > 0)
         {
             byte wfR = WaveformColor.R;
             byte wfG = WaveformColor.G;
             byte wfB = WaveformColor.B;
 
             // Calculate samples per pixel (decimation)
-            float samplesPerPixel = (float)samples.Length / width;
+            float samplesPerPixel = (float)sampleCount / width;
 
             int? lastY = null;
 
@@ -145,7 +181,7 @@ public partial class OscilloscopeControl : UserControl
             {
                 // Find min/max in this pixel's range
                 int startSample = (int)(x * samplesPerPixel);
-                int endSample = Math.Min((int)((x + 1) * samplesPerPixel), samples.Length);
+                int endSample = Math.Min((int)((x + 1) * samplesPerPixel), sampleCount);
 
                 float minVal = 0, maxVal = 0;
                 for (int i = startSample; i < endSample; i++)

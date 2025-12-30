@@ -154,8 +154,19 @@ public class FfmpegProcessManager : IDisposable
         if (_disposed || _ffmpegProcess.HasExited)
             return;
 
-        // Non-blocking add with timeout
-        _writeQueue.TryAdd(pcmData, 100);
+        try
+        {
+            // Non-blocking add with timeout
+            _writeQueue.TryAdd(pcmData, 100);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Queue was disposed
+        }
+        catch (InvalidOperationException)
+        {
+            // Queue was marked as complete for adding (during shutdown)
+        }
     }
 
     public void Stop()

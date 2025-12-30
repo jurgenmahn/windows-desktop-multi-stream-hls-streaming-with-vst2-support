@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using Application = System.Windows.Application;
 using AudioProcessorAndStreamer.Models;
 using AudioProcessorAndStreamer.Services.Encoding;
 using AudioProcessorAndStreamer.Services.Streaming;
@@ -36,7 +37,7 @@ public partial class App : Application
                 // Ensure default configuration if section is missing
                 services.PostConfigure<AppConfiguration>(config =>
                 {
-                    config.FfmpegPath ??= "FFmpeg/ffmpeg.exe";
+                    config.FfmpegPath ??= "FFmpeg/bin/ffmpeg.exe";
                     config.HlsOutputDirectory ??= "hls_output";
                     config.BaseDomain ??= "http://localhost:8080";
                     config.Streams ??= new List<StreamConfiguration>();

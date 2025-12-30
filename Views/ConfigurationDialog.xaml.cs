@@ -1,4 +1,6 @@
+using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Input;
 using AudioProcessorAndStreamer.Models;
 using AudioProcessorAndStreamer.ViewModels;
 
@@ -36,5 +38,12 @@ public partial class ConfigurationDialog : Window
     {
         DialogResult = false;
         Close();
+    }
+
+    private void NumericTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        // Allow digits and decimal point (period or comma based on culture)
+        var regex = new Regex(@"^[0-9.,]+$");
+        e.Handled = !regex.IsMatch(e.Text);
     }
 }
