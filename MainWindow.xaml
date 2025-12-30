@@ -189,9 +189,9 @@
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
 
-                                    <controls:OscilloscopeControl Grid.Column="0" Grid.Row="0" Height="80" Label="Input"
+                                    <controls:OscilloscopeControl Grid.Column="0" Grid.Row="0" Height="50" Label="Input"
                                                                    Tag="InputScope"/>
-                                    <controls:OscilloscopeControl Grid.Column="2" Grid.Row="0" Height="80" Label="Output"
+                                    <controls:OscilloscopeControl Grid.Column="2" Grid.Row="0" Height="50" Label="Output"
                                                                    WaveformColor="#0078D4" Tag="OutputScope"/>
 
                                     <CheckBox Grid.Column="2" Grid.Row="1"

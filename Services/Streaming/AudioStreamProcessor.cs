@@ -24,6 +24,7 @@ public class AudioStreamProcessor : IDisposable
     public string Id => _config.Id;
     public string Name => _config.Name;
     public bool IsRunning => _isRunning;
+    public double OutputBufferFillLevel => _outputSmoothingBuffer?.FillLevel ?? 0;
 
     public event EventHandler<float[]>? InputSamplesAvailable;
     public event EventHandler<float[]>? OutputSamplesAvailable;
