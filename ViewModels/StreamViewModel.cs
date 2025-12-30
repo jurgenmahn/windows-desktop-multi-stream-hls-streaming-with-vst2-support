@@ -137,27 +137,40 @@ public partial class StreamViewModel : ObservableObject, IDisposable
     private int _inputSampleCount = 0;
     private void OnInputSamplesAvailable(object? sender, float[] samples)
     {
-        // Debug: track input sample delivery (every 100 callbacks)
-        if (++_inputSampleCount % 100 == 0)
-        {
-            System.Diagnostics.Debug.WriteLine($"[{Name}] Input samples received #{_inputSampleCount}: {samples.Length} samples");
-        }
+        _inputSampleCount++;
 
         // UpdateSamples is thread-safe, no need to dispatch
         _inputOscilloscope?.UpdateSamples(samples);
+
+        // Update input buffer fill (show 100% when receiving data)
+        if (_inputSampleCount % 10 == 0)
+        {
+            Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                if (_inputOscilloscope != null)
+                    _inputOscilloscope.BufferFillLevel = 100;
+            });
+        }
     }
 
     private int _outputSampleCount = 0;
     private void OnOutputSamplesAvailable(object? sender, float[] samples)
     {
-        // Debug: track output sample delivery (every 100 callbacks)
-        if (++_outputSampleCount % 100 == 0)
-        {
-            System.Diagnostics.Debug.WriteLine($"[{Name}] Output samples received #{_outputSampleCount}: {samples.Length} samples, oscilloscope={_outputOscilloscope != null}");
-        }
+        _outputSampleCount++;
 
         // UpdateSamples is thread-safe, no need to dispatch
         _outputOscilloscope?.UpdateSamples(samples);
+
+        // Update output buffer fill level from the smoothing buffer
+        if (_outputSampleCount % 10 == 0 && _processor != null)
+        {
+            var fillLevel = _processor.OutputBufferFillLevel;
+            Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                if (_outputOscilloscope != null)
+                    _outputOscilloscope.BufferFillLevel = fillLevel;
+            });
+        }
     }
 
     private void OnEncoderMessage(object? sender, string message)
