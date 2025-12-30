@@ -49,7 +49,11 @@ public class WasapiCaptureService : IAudioCaptureService
         }
         else
         {
-            _capture = new WasapiCapture(device, true, config.BufferSize);
+            // Convert samples to milliseconds - WasapiCapture expects milliseconds
+            // config.BufferSize is in samples (256, 512, 1024, etc.)
+            int bufferMs = Math.Max(10, config.BufferSize * 1000 / config.SampleRate);
+            System.Diagnostics.Debug.WriteLine($"[WasapiCapture] BufferSize: {config.BufferSize} samples = {bufferMs}ms at {config.SampleRate}Hz");
+            _capture = new WasapiCapture(device, true, bufferMs);
         }
 
         _waveFormat = _capture.WaveFormat;

@@ -17,6 +17,7 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <infra:InvertBoolConverter x:Key="InvertBool"/>
+        <infra:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
 
         <Style x:Key="MenuButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
@@ -94,7 +95,8 @@
                 <Button Content="File" Style="{StaticResource MenuButtonStyle}"/>
                 <Button Content="Configuration" Style="{StaticResource MenuButtonStyle}"
                         Command="{Binding OpenConfigurationCommand}"/>
-                <Button Content="About" Style="{StaticResource MenuButtonStyle}"/>
+                <Button Content="About" Style="{StaticResource MenuButtonStyle}"
+                        Command="{Binding OpenAboutCommand}"/>
             </StackPanel>
         </Border>
 
@@ -209,10 +211,24 @@
 
         <!-- Status bar -->
         <Border Grid.Row="3" Background="#0078D4" Padding="8,4">
-            <TextBlock Foreground="White" FontSize="12">
-                <Run Text="Streams: "/>
-                <Run Text="{Binding Streams.Count, Mode=OneWay}"/>
-            </TextBlock>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Foreground="White" FontSize="12">
+                    <Run Text="Streams: "/>
+                    <Run Text="{Binding Streams.Count, Mode=OneWay}"/>
+                </TextBlock>
+
+                <!-- Listener counts (only shown when there are listeners) -->
+                <TextBlock Grid.Column="1" Foreground="White" FontSize="12" HorizontalAlignment="Right"
+                           Visibility="{Binding ListenerStatus, Converter={StaticResource StringToVisibilityConverter}}">
+                    <Run Text="Listeners: "/>
+                    <Run Text="{Binding ListenerStatus, Mode=OneWay}"/>
+                </TextBlock>
+            </Grid>
         </Border>
     </Grid>
 </Window>

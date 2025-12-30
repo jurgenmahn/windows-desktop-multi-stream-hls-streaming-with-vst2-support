@@ -19,8 +19,10 @@ public class HlsWebServer : IAsyncDisposable
     private WebApplication? _app;
     private bool _isRunning;
 
-    // Track active listeners per stream for lazy processing
-    private readonly ConcurrentDictionary<string, int> _activeListeners = new();
+    // Track active listeners per stream - maps streamPath -> (clientIP -> lastSeenTime)
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, DateTime>> _streamListeners = new();
+    private readonly TimeSpan _listenerTimeout = TimeSpan.FromSeconds(30);
+    private System.Threading.Timer? _cleanupTimer;
 
     public bool IsRunning => _isRunning;
     public int Port => _port;
@@ -28,8 +30,7 @@ public class HlsWebServer : IAsyncDisposable
 
     public event EventHandler<string>? RequestReceived;
     public event EventHandler<string>? ServerError;
-    public event EventHandler<string>? ListenerConnected;
-    public event EventHandler<string>? ListenerDisconnected;
+    public event EventHandler? ListenerCountChanged;
 
     public HlsWebServer(IOptions<AppConfiguration> config)
     {
@@ -57,12 +58,73 @@ public class HlsWebServer : IAsyncDisposable
 
     public int GetListenerCount(string streamPath)
     {
-        return _activeListeners.GetValueOrDefault(streamPath, 0);
+        if (_streamListeners.TryGetValue(streamPath, out var listeners))
+        {
+            return listeners.Count;
+        }
+        return 0;
     }
 
     public bool HasListeners(string streamPath)
     {
         return GetListenerCount(streamPath) > 0;
+    }
+
+    /// <summary>
+    /// Gets all streams with their current listener counts.
+    /// </summary>
+    public Dictionary<string, int> GetAllListenerCounts()
+    {
+        var result = new Dictionary<string, int>();
+        foreach (var kvp in _streamListeners)
+        {
+            var count = kvp.Value.Count;
+            if (count > 0)
+            {
+                result[kvp.Key] = count;
+            }
+        }
+        return result;
+    }
+
+    private void TrackListener(string streamPath, string clientIp)
+    {
+        var listeners = _streamListeners.GetOrAdd(streamPath, _ => new ConcurrentDictionary<string, DateTime>());
+        var isNew = !listeners.ContainsKey(clientIp);
+        listeners[clientIp] = DateTime.UtcNow;
+
+        if (isNew)
+        {
+            ListenerCountChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void CleanupStaleListeners(object? state)
+    {
+        var now = DateTime.UtcNow;
+        var hasChanges = false;
+
+        foreach (var streamKvp in _streamListeners)
+        {
+            var listeners = streamKvp.Value;
+            var staleClients = listeners
+                .Where(kvp => now - kvp.Value > _listenerTimeout)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var clientIp in staleClients)
+            {
+                if (listeners.TryRemove(clientIp, out _))
+                {
+                    hasChanges = true;
+                }
+            }
+        }
+
+        if (hasChanges)
+        {
+            ListenerCountChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public async Task StartAsync()
@@ -98,10 +160,25 @@ public class HlsWebServer : IAsyncDisposable
             await next();
         });
 
-        // Request logging
+        // Request logging and listener tracking
         _app.Use(async (context, next) =>
         {
             RequestReceived?.Invoke(this, $"{context.Request.Method} {context.Request.Path}");
+
+            // Track listeners for HLS segment/playlist requests
+            var path = context.Request.Path.Value ?? "";
+            if (path.StartsWith("/hls/") && (path.EndsWith(".ts") || path.EndsWith(".m3u8")))
+            {
+                // Extract stream path from URL: /hls/{streamPath}/...
+                var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 2)
+                {
+                    var streamPath = parts[1];
+                    var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    TrackListener(streamPath, clientIp);
+                }
+            }
+
             await next();
         });
 
@@ -175,6 +252,9 @@ public class HlsWebServer : IAsyncDisposable
         {
             await _app.StartAsync();
             _isRunning = true;
+
+            // Start cleanup timer to remove stale listeners every 5 seconds
+            _cleanupTimer = new System.Threading.Timer(CleanupStaleListeners, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
         }
         catch (Exception ex)
         {
@@ -189,6 +269,14 @@ public class HlsWebServer : IAsyncDisposable
 
         try
         {
+            // Stop cleanup timer
+            _cleanupTimer?.Dispose();
+            _cleanupTimer = null;
+
+            // Clear all listener data
+            _streamListeners.Clear();
+            ListenerCountChanged?.Invoke(this, EventArgs.Empty);
+
             await _app.StopAsync();
         }
         finally

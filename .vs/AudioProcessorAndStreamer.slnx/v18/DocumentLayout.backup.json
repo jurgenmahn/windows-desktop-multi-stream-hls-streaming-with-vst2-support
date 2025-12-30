@@ -3,8 +3,16 @@
   "WorkspaceRootPath": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{496DDA49-DDAB-6A5D-ADD4-E1A66E137A90}|AudioProcessorAndStreamer.csproj|c:\\users\\jurge\\source\\repos\\audioprocessorandstreamer\\viewmodels\\streamviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{496DDA49-DDAB-6A5D-ADD4-E1A66E137A90}|AudioProcessorAndStreamer.csproj|solutionrelative:viewmodels\\streamviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{496DDA49-DDAB-6A5D-ADD4-E1A66E137A90}|AudioProcessorAndStreamer.csproj|c:\\users\\jurge\\source\\repos\\audioprocessorandstreamer\\views\\configurationdialog.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{496DDA49-DDAB-6A5D-ADD4-E1A66E137A90}|AudioProcessorAndStreamer.csproj|solutionrelative:views\\configurationdialog.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{496DDA49-DDAB-6A5D-ADD4-E1A66E137A90}|AudioProcessorAndStreamer.csproj|c:\\users\\jurge\\source\\repos\\audioprocessorandstreamer\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{496DDA49-DDAB-6A5D-ADD4-E1A66E137A90}|AudioProcessorAndStreamer.csproj|solutionrelative:mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     }
   ],
   "DocumentGroupContainers": [
@@ -19,14 +27,37 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "StreamViewModel.cs",
+              "DocumentMoniker": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\ViewModels\\StreamViewModel.cs",
+              "RelativeDocumentMoniker": "ViewModels\\StreamViewModel.cs",
+              "ToolTip": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\ViewModels\\StreamViewModel.cs",
+              "RelativeToolTip": "ViewModels\\StreamViewModel.cs",
+              "ViewState": "AgIAAMQAAAAAAAAAAAAAAG0AAABHAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-30T01:38:47.26Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "MainWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\MainWindow.xaml",
+              "RelativeDocumentMoniker": "MainWindow.xaml",
+              "ToolTip": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\MainWindow.xaml",
+              "RelativeToolTip": "MainWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2025-12-30T01:38:34.533Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "ConfigurationDialog.xaml",
               "DocumentMoniker": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\Views\\ConfigurationDialog.xaml",
               "RelativeDocumentMoniker": "Views\\ConfigurationDialog.xaml",
               "ToolTip": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\Views\\ConfigurationDialog.xaml",
               "RelativeToolTip": "Views\\ConfigurationDialog.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-12-30T01:10:51.002Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-12-30T01:10:51.002Z"
             }
           ]
         }

@@ -10,11 +10,11 @@ none
 false
 TRACE;DEBUG;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
 C:\Users\jurge\source\repos\AudioProcessorAndStreamer\App.xaml
-4-1095536776
+51312530110
 
-35-478952345
+36-458619177
 355-257349301
-Controls\OscilloscopeControl.xaml;Controls\StatusIndicator.xaml;MainWindow.xaml;Views\ConfigurationDialog.xaml;
+Controls\OscilloscopeControl.xaml;Controls\StatusIndicator.xaml;MainWindow.xaml;Views\AboutDialog.xaml;Views\ConfigurationDialog.xaml;
 
 False
 

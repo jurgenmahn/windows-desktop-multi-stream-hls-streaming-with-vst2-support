@@ -179,36 +179,6 @@
                                     <sys:Int32>2048</sys:Int32>
                                 </ComboBoxItem.Tag>
                             </ComboBoxItem>
-                            <ComboBoxItem Content="85ms (4096 samples)">
-                                <ComboBoxItem.Tag>
-                                    <sys:Int32>4096</sys:Int32>
-                                </ComboBoxItem.Tag>
-                            </ComboBoxItem>
-                            <ComboBoxItem Content="170ms (8192 samples)">
-                                <ComboBoxItem.Tag>
-                                    <sys:Int32>8192</sys:Int32>
-                                </ComboBoxItem.Tag>
-                            </ComboBoxItem>
-                            <ComboBoxItem Content="340ms (16384 samples)">
-                                <ComboBoxItem.Tag>
-                                    <sys:Int32>16384</sys:Int32>
-                                </ComboBoxItem.Tag>
-                            </ComboBoxItem>
-                            <ComboBoxItem Content="680ms (32768 samples)">
-                                <ComboBoxItem.Tag>
-                                    <sys:Int32>32768</sys:Int32>
-                                </ComboBoxItem.Tag>
-                            </ComboBoxItem>
-                            <ComboBoxItem Content="1.3s (65536 samples)">
-                                <ComboBoxItem.Tag>
-                                    <sys:Int32>65536</sys:Int32>
-                                </ComboBoxItem.Tag>
-                            </ComboBoxItem>
-                            <ComboBoxItem Content="2.7s (131072 samples)">
-                                <ComboBoxItem.Tag>
-                                    <sys:Int32>131072</sys:Int32>
-                                </ComboBoxItem.Tag>
-                            </ComboBoxItem>
                         </ComboBox>
                     </StackPanel>
                 </Grid>
@@ -361,8 +331,7 @@
                         <Grid Margin="0,12,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="2*"/>
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Margin="0,0,8,0">
@@ -371,13 +340,7 @@
                                 <TextBox Text="{Binding StreamsPagePath}"/>
                             </StackPanel>
 
-                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                                <TextBlock Text="Output Buffer (seconds)" FontWeight="SemiBold" Margin="0,0,0,2"/>
-                                <TextBlock Text="Smoothing buffer for VST output (0 = disabled)" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
-                                <TextBox Text="{Binding VstOutputBufferSeconds}" PreviewTextInput="NumericTextBox_PreviewTextInput"/>
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
+                            <StackPanel Grid.Column="1" VerticalAlignment="Bottom">
                                 <CheckBox IsChecked="{Binding LazyProcessing}" Margin="0,0,0,4">
                                     <StackPanel>
                                         <TextBlock Text="Lazy Processing (On-Demand)" FontWeight="SemiBold"/>

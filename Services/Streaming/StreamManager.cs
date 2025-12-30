@@ -61,8 +61,7 @@ public class StreamManager : IStreamManager
                 config,
                 _vstHost,
                 _ffmpegService,
-                hlsOutputDir,
-                _config.VstOutputBufferSeconds);
+                hlsOutputDir);
 
             processor.Stopped += (s, e) => OnStreamStopped(config.Id, config.Name);
 
@@ -72,6 +71,20 @@ public class StreamManager : IStreamManager
             }
 
             processor.Start();
+
+            // Warn user about sample rate mismatch with WASAPI
+            if (processor.HasSampleRateMismatch)
+            {
+                var warning = $"WARNING: Sample rate mismatch! Configured {processor.ConfiguredSampleRate}Hz but device is {processor.ActualSampleRate}Hz. Using device rate.";
+                System.Diagnostics.Debug.WriteLine($"[{config.Name}] {warning}");
+                // Fire through StreamError as a warning (not a fatal error)
+                StreamError?.Invoke(this, new StreamErrorEventArgs(
+                    config.Id,
+                    config.Name,
+                    warning,
+                    null));
+            }
+
             StreamStarted?.Invoke(this, new StreamEventArgs(config.Id, config.Name));
 
             return processor;

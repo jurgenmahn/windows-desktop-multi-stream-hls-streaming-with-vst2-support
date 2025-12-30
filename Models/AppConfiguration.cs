@@ -20,12 +20,6 @@ public class AppConfiguration
     public string StreamsPagePath { get; set; } = "/streams";
 
     /// <summary>
-    /// Buffer size in seconds for smoothing VST output before sending to oscilloscope and encoder.
-    /// Helps regulate bursty VST output. Set to 0 to disable buffering.
-    /// </summary>
-    public double VstOutputBufferSeconds { get; set; } = 0.5;
-
-    /// <summary>
     /// Returns the base URL as configured (no auto port appending - allows for proxy setups).
     /// </summary>
     public string GetFullBaseUrl()

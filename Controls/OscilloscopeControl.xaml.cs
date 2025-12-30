@@ -20,8 +20,8 @@ public partial class OscilloscopeControl : UserControl
     private int _samplesInReadBuffer;
     private bool _newDataAvailable;
 
-    // Max samples to display (~25ms at 48kHz stereo)
-    private const int MaxDisplaySamples = 2400;
+    // Max samples to display (~10ms at 48kHz stereo)
+    private const int MaxDisplaySamples = 960;
 
     public static readonly DependencyProperty LabelProperty =
         DependencyProperty.Register(nameof(Label), typeof(string), typeof(OscilloscopeControl),
@@ -34,18 +34,6 @@ public partial class OscilloscopeControl : UserControl
     public static readonly DependencyProperty BackgroundColorProperty =
         DependencyProperty.Register(nameof(BackgroundFillColor), typeof(Color), typeof(OscilloscopeControl),
             new PropertyMetadata(Color.FromRgb(0x1A, 0x1A, 0x1A)));
-
-    public static readonly DependencyProperty BufferFillLevelProperty =
-        DependencyProperty.Register(nameof(BufferFillLevel), typeof(double), typeof(OscilloscopeControl),
-            new PropertyMetadata(0.0, OnBufferFillLevelChanged));
-
-    private static void OnBufferFillLevelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (d is OscilloscopeControl control)
-        {
-            control.UpdateBufferBar();
-        }
-    }
 
     public string Label
     {
@@ -63,12 +51,6 @@ public partial class OscilloscopeControl : UserControl
     {
         get => (Color)GetValue(BackgroundColorProperty);
         set => SetValue(BackgroundColorProperty, value);
-    }
-
-    public double BufferFillLevel
-    {
-        get => (double)GetValue(BufferFillLevelProperty);
-        set => SetValue(BufferFillLevelProperty, value);
     }
 
     public OscilloscopeControl()
@@ -261,20 +243,5 @@ public partial class OscilloscopeControl : UserControl
         {
             // Bitmap might be disposed
         }
-    }
-
-    private void UpdateBufferBar()
-    {
-        if (BufferBarContainer == null || BufferFillBar == null) return;
-
-        var containerWidth = BufferBarContainer.ActualWidth;
-        if (containerWidth <= 0) return;
-
-        // BufferFillLevel is 0-100 percentage
-        var fillWidth = Math.Max(0, Math.Min(containerWidth, containerWidth * BufferFillLevel / 100.0));
-        BufferFillBar.Width = fillWidth;
-
-        // Color the bar based on waveform color
-        BufferFillBar.Background = new SolidColorBrush(WaveformColor);
     }
 }

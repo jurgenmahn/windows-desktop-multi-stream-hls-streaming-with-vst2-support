@@ -38,6 +38,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _areAllStreamsRunning;
 
+    [ObservableProperty]
+    private string _listenerStatus = string.Empty;
+
     public MainWindowViewModel(
         IStreamManager streamManager,
         HlsWebServer webServer,
@@ -51,6 +54,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         _webServer.RequestReceived += (s, msg) =>
             System.Diagnostics.Debug.WriteLine($"[HLS] {msg}");
+
+        _webServer.ListenerCountChanged += OnListenerCountChanged;
 
         LoadAppConfig();
         LoadStreamsFromConfig();
@@ -72,7 +77,6 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     _config.HlsOutputDirectory = savedConfig.HlsOutputDirectory;
                     _config.LazyProcessing = savedConfig.LazyProcessing;
                     _config.StreamsPagePath = savedConfig.StreamsPagePath;
-                    _config.VstOutputBufferSeconds = savedConfig.VstOutputBufferSeconds;
                 }
             }
             catch (Exception ex)
@@ -147,6 +151,32 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         var configs = Streams.Select(s => s.Configuration).ToList();
         _webServer.UpdateStreams(configs);
+    }
+
+    private void OnListenerCountChanged(object? sender, EventArgs e)
+    {
+        // Update listener status on UI thread
+        Application.Current?.Dispatcher.Invoke(() =>
+        {
+            var counts = _webServer.GetAllListenerCounts();
+            if (counts.Count == 0)
+            {
+                ListenerStatus = string.Empty;
+            }
+            else
+            {
+                // Build status string showing streams with listeners
+                var parts = new List<string>();
+                foreach (var kvp in counts)
+                {
+                    // Find stream name from path
+                    var stream = Streams.FirstOrDefault(s => s.Configuration.StreamPath == kvp.Key);
+                    var name = stream?.Name ?? kvp.Key;
+                    parts.Add($"{name}: {kvp.Value}");
+                }
+                ListenerStatus = string.Join(" | ", parts);
+            }
+        });
     }
 
     [RelayCommand]
@@ -260,7 +290,6 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 _config.HlsOutputDirectory = dialog.ResultConfiguration.HlsOutputDirectory;
                 _config.LazyProcessing = dialog.ResultConfiguration.LazyProcessing;
                 _config.StreamsPagePath = dialog.ResultConfiguration.StreamsPagePath;
-                _config.VstOutputBufferSeconds = dialog.ResultConfiguration.VstOutputBufferSeconds;
                 SaveAppConfig();
             }
 
@@ -297,10 +326,20 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
+    [RelayCommand]
+    private void OpenAbout()
+    {
+        var dialog = new Views.AboutDialog();
+        dialog.Owner = Application.Current.MainWindow;
+        dialog.ShowDialog();
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+
+        _webServer.ListenerCountChanged -= OnListenerCountChanged;
 
         StopAllStreams();
 

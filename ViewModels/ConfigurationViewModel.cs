@@ -39,9 +39,6 @@ public partial class ConfigurationViewModel : ObservableObject
     [ObservableProperty]
     private string _streamsPagePath = "/streams";
 
-    [ObservableProperty]
-    private double _vstOutputBufferSeconds = 0.5;
-
     public bool HasChanges { get; private set; }
 
     public ConfigurationViewModel()
@@ -57,7 +54,6 @@ public partial class ConfigurationViewModel : ObservableObject
         HlsOutputDirectory = config.HlsOutputDirectory;
         LazyProcessing = config.LazyProcessing;
         StreamsPagePath = config.StreamsPagePath;
-        VstOutputBufferSeconds = config.VstOutputBufferSeconds;
 
         Streams.Clear();
         foreach (var stream in streamConfigs)
@@ -81,8 +77,7 @@ public partial class ConfigurationViewModel : ObservableObject
             WebServerPort = WebServerPort,
             HlsOutputDirectory = HlsOutputDirectory,
             LazyProcessing = LazyProcessing,
-            StreamsPagePath = StreamsPagePath,
-            VstOutputBufferSeconds = VstOutputBufferSeconds
+            StreamsPagePath = StreamsPagePath
         };
 
         return (config, Streams.ToList());

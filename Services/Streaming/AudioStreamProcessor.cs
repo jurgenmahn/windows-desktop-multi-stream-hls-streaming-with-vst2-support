@@ -15,8 +15,9 @@ public class AudioStreamProcessor : IDisposable
     private readonly List<FfmpegProcessManager> _encoders;
     private readonly CircularAudioBuffer _inputVisualizationBuffer;
     private readonly CircularAudioBuffer _outputVisualizationBuffer;
-    private readonly AudioSmoothingBuffer? _outputSmoothingBuffer;
     private readonly int _blockSize;
+    private readonly int _actualSampleRate;
+    private readonly int _actualChannels;
     private float[] _processBuffer;
     private bool _isRunning;
     private bool _disposed;
@@ -24,7 +25,10 @@ public class AudioStreamProcessor : IDisposable
     public string Id => _config.Id;
     public string Name => _config.Name;
     public bool IsRunning => _isRunning;
-    public double OutputBufferFillLevel => _outputSmoothingBuffer?.FillLevel ?? 0;
+    public int ActualSampleRate => _actualSampleRate;
+    public int ConfiguredSampleRate => _config.AudioInput.SampleRate;
+    public bool HasSampleRateMismatch => _config.AudioInput.DriverType == AudioDriverType.Wasapi
+                                         && _config.AudioInput.SampleRate != _actualSampleRate;
 
     public event EventHandler<float[]>? InputSamplesAvailable;
     public event EventHandler<float[]>? OutputSamplesAvailable;
@@ -35,8 +39,7 @@ public class AudioStreamProcessor : IDisposable
         StreamConfiguration config,
         IVstHostService vstHost,
         IFfmpegService ffmpegService,
-        string hlsOutputDirectory,
-        double vstOutputBufferSeconds = 0)
+        string hlsOutputDirectory)
     {
         _config = config;
         _blockSize = config.AudioInput.BufferSize;
@@ -48,27 +51,24 @@ public class AudioStreamProcessor : IDisposable
             _ => new WasapiCaptureService(config.AudioInput)
         };
 
+        // Use the ACTUAL sample rate from the capture device, not the configured one
+        // This is critical - WASAPI captures at the device's native rate
+        _actualSampleRate = _capture.WaveFormat.SampleRate;
+        _actualChannels = _capture.WaveFormat.Channels;
+
+        System.Diagnostics.Debug.WriteLine($"[{config.Name}] Configured: {config.AudioInput.SampleRate}Hz, Actual device: {_actualSampleRate}Hz, {_actualChannels}ch");
+
+        // Check for sample rate mismatch with WASAPI
+        if (config.AudioInput.DriverType == AudioDriverType.Wasapi && config.AudioInput.SampleRate != _actualSampleRate)
+        {
+            System.Diagnostics.Debug.WriteLine($"[{config.Name}] WARNING: Sample rate mismatch! Using device rate {_actualSampleRate}Hz");
+        }
+
         // Create visualization buffers (store ~1 second of audio)
-        int bufferSize = config.AudioInput.SampleRate * config.AudioInput.Channels;
+        int bufferSize = _actualSampleRate * _actualChannels;
         _inputVisualizationBuffer = new CircularAudioBuffer(bufferSize);
         _outputVisualizationBuffer = new CircularAudioBuffer(bufferSize);
-        _processBuffer = new float[_blockSize * config.AudioInput.Channels * 2];
-
-        // Create output smoothing buffer if configured
-        if (vstOutputBufferSeconds > 0)
-        {
-            System.Diagnostics.Debug.WriteLine($"[{config.Name}] Creating smoothing buffer: {vstOutputBufferSeconds}s buffer, 20ms output chunks");
-            _outputSmoothingBuffer = new AudioSmoothingBuffer(
-                vstOutputBufferSeconds,
-                outputChunkMs: 20, // Output 20ms chunks for smooth 50fps display
-                config.AudioInput.SampleRate,
-                config.AudioInput.Channels);
-            _outputSmoothingBuffer.ChunkReady += OnSmoothedOutputReady;
-        }
-        else
-        {
-            System.Diagnostics.Debug.WriteLine($"[{config.Name}] No smoothing buffer (vstOutputBufferSeconds={vstOutputBufferSeconds})");
-        }
+        _processBuffer = new float[_blockSize * _actualChannels * 2];
 
         // Load VST plugins in order
         _vstChain = new List<VstPluginInstance>();
@@ -77,7 +77,7 @@ public class AudioStreamProcessor : IDisposable
             var plugin = vstHost.LoadPlugin(vstConfig);
             if (plugin != null)
             {
-                plugin.Initialize(config.AudioInput.SampleRate, _blockSize);
+                plugin.Initialize(_actualSampleRate, _blockSize);
                 plugin.IsBypassed = vstConfig.IsBypassed;
 
                 // Load preset file if configured
@@ -113,8 +113,8 @@ public class AudioStreamProcessor : IDisposable
                 var encoder = ffmpegService.CreateEncoder(
                     profile,
                     outputFile,
-                    config.AudioInput.SampleRate,
-                    config.AudioInput.Channels);
+                    _actualSampleRate,
+                    _actualChannels);
 
                 encoder.ErrorDataReceived += (s, msg) => EncoderMessage?.Invoke(this, msg);
                 encoder.ProcessExited += OnEncoderExited;
@@ -209,25 +209,8 @@ public class AudioStreamProcessor : IDisposable
             }
         }
 
-        // Route output through smoothing buffer if available, otherwise direct
-        if (_outputSmoothingBuffer != null)
-        {
-            // Copy and send to smoothing buffer - it will fire ChunkReady events
-            var outputCopy = new float[processedSamples.Length];
-            Array.Copy(processedSamples, outputCopy, processedSamples.Length);
-            _outputSmoothingBuffer.Write(outputCopy);
-        }
-        else
-        {
-            // Direct output without smoothing
-            SendOutputToConsumers(processedSamples);
-        }
-    }
-
-    private void OnSmoothedOutputReady(object? sender, float[] samples)
-    {
-        if (!_isRunning) return;
-        SendOutputToConsumers(samples);
+        // Send to visualization and encoders
+        SendOutputToConsumers(processedSamples);
     }
 
     private void SendOutputToConsumers(float[] samples)
@@ -306,12 +289,6 @@ public class AudioStreamProcessor : IDisposable
 
         _capture.DataAvailable -= OnAudioDataAvailable;
         _capture.Dispose();
-
-        if (_outputSmoothingBuffer != null)
-        {
-            _outputSmoothingBuffer.ChunkReady -= OnSmoothedOutputReady;
-            _outputSmoothingBuffer.Clear();
-        }
 
         foreach (var vst in _vstChain)
         {

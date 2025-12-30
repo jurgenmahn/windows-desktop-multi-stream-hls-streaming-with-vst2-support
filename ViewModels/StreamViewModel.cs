@@ -112,6 +112,22 @@ public partial class StreamViewModel : ObservableObject, IDisposable
             _processor.EncoderMessage += OnEncoderMessage;
             _processor.Stopped += OnProcessorStopped;
 
+            // Warn user about sample rate mismatch
+            if (_processor.HasSampleRateMismatch)
+            {
+                var message = $"Sample rate mismatch detected!\n\n" +
+                              $"Configured: {_processor.ConfiguredSampleRate} Hz\n" +
+                              $"Device actual: {_processor.ActualSampleRate} Hz\n\n" +
+                              $"Using device rate ({_processor.ActualSampleRate} Hz) for correct playback.\n" +
+                              $"Consider updating the stream configuration to match your device.";
+
+                Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    System.Windows.MessageBox.Show(message, "Sample Rate Warning",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                });
+            }
+
             IsRunning = true;
             StatusMessage = "Streaming";
         }
@@ -134,43 +150,16 @@ public partial class StreamViewModel : ObservableObject, IDisposable
         _streamManager.StopStream(_config.Id);
     }
 
-    private int _inputSampleCount = 0;
     private void OnInputSamplesAvailable(object? sender, float[] samples)
     {
-        _inputSampleCount++;
-
         // UpdateSamples is thread-safe, no need to dispatch
         _inputOscilloscope?.UpdateSamples(samples);
-
-        // Update input buffer fill (show 100% when receiving data)
-        if (_inputSampleCount % 10 == 0)
-        {
-            Application.Current?.Dispatcher.BeginInvoke(() =>
-            {
-                if (_inputOscilloscope != null)
-                    _inputOscilloscope.BufferFillLevel = 100;
-            });
-        }
     }
 
-    private int _outputSampleCount = 0;
     private void OnOutputSamplesAvailable(object? sender, float[] samples)
     {
-        _outputSampleCount++;
-
         // UpdateSamples is thread-safe, no need to dispatch
         _outputOscilloscope?.UpdateSamples(samples);
-
-        // Update output buffer fill level from the smoothing buffer
-        if (_outputSampleCount % 10 == 0 && _processor != null)
-        {
-            var fillLevel = _processor.OutputBufferFillLevel;
-            Application.Current?.Dispatcher.BeginInvoke(() =>
-            {
-                if (_outputOscilloscope != null)
-                    _outputOscilloscope.BufferFillLevel = fillLevel;
-            });
-        }
     }
 
     private void OnEncoderMessage(object? sender, string message)
