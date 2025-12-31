@@ -4,6 +4,7 @@ using AudioProcessorAndStreamer.Services.Audio;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
+using NAudio.CoreAudioApi;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
 namespace AudioProcessorAndStreamer.ViewModels;
@@ -25,6 +26,12 @@ public partial class ConfigurationViewModel : ObservableObject
     private AudioDeviceInfo? _selectedAudioDevice;
 
     [ObservableProperty]
+    private ObservableCollection<string> _outputDevices = new();
+
+    [ObservableProperty]
+    private string _monitorOutputDevice = "";
+
+    [ObservableProperty]
     private string _baseDomain = "http://localhost:8080";
 
     [ObservableProperty]
@@ -39,12 +46,16 @@ public partial class ConfigurationViewModel : ObservableObject
     [ObservableProperty]
     private string _streamsPagePath = "/streams";
 
+    [ObservableProperty]
+    private bool _debugAudioEnabled = false;
+
     public bool HasChanges { get; private set; }
 
     public ConfigurationViewModel()
     {
         _deviceEnumerator = new AudioDeviceEnumerator();
         RefreshAudioDevices();
+        RefreshOutputDevices();
     }
 
     public void LoadConfiguration(AppConfiguration config, IEnumerable<StreamConfiguration> streamConfigs)
@@ -54,6 +65,8 @@ public partial class ConfigurationViewModel : ObservableObject
         HlsOutputDirectory = config.HlsOutputDirectory;
         LazyProcessing = config.LazyProcessing;
         StreamsPagePath = config.StreamsPagePath;
+        DebugAudioEnabled = config.DebugAudioEnabled;
+        MonitorOutputDevice = config.MonitorOutputDevice;
 
         Streams.Clear();
         foreach (var stream in streamConfigs)
@@ -77,7 +90,9 @@ public partial class ConfigurationViewModel : ObservableObject
             WebServerPort = WebServerPort,
             HlsOutputDirectory = HlsOutputDirectory,
             LazyProcessing = LazyProcessing,
-            StreamsPagePath = StreamsPagePath
+            StreamsPagePath = StreamsPagePath,
+            DebugAudioEnabled = DebugAudioEnabled,
+            MonitorOutputDevice = MonitorOutputDevice
         };
 
         return (config, Streams.ToList());
@@ -90,6 +105,35 @@ public partial class ConfigurationViewModel : ObservableObject
         foreach (var device in _deviceEnumerator.GetAllDevices())
         {
             AudioDevices.Add(device);
+        }
+    }
+
+    [RelayCommand]
+    private void RefreshOutputDevices()
+    {
+        var currentSelection = MonitorOutputDevice;
+        OutputDevices.Clear();
+
+        // Add empty option for "Default Device"
+        OutputDevices.Add("");
+
+        try
+        {
+            var enumerator = new MMDeviceEnumerator();
+            foreach (var device in enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
+            {
+                OutputDevices.Add(device.FriendlyName);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to enumerate output devices: {ex.Message}");
+        }
+
+        // Restore selection if it still exists
+        if (OutputDevices.Contains(currentSelection))
+        {
+            MonitorOutputDevice = currentSelection;
         }
     }
 
@@ -176,7 +220,11 @@ public partial class ConfigurationViewModel : ObservableObject
 
         SelectedStream.VstPlugins.Remove(plugin);
         HasChanges = true;
-        OnPropertyChanged(nameof(SelectedStream));
+
+        // Force UI refresh by temporarily changing SelectedStream
+        var current = SelectedStream;
+        SelectedStream = null;
+        SelectedStream = current;
     }
 
     [RelayCommand]
@@ -184,11 +232,15 @@ public partial class ConfigurationViewModel : ObservableObject
     {
         if (plugin == null) return;
 
+        // Default to Presets folder
+        var presetsFolder = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Presets");
+
         var dialog = new OpenFileDialog
         {
             Title = "Select VST Preset File",
             Filter = "Stereo Tool Presets (*.sts)|*.sts|VST Presets (*.fxp;*.fxb)|*.fxp;*.fxb|All Files (*.*)|*.*",
-            CheckFileExists = true
+            CheckFileExists = true,
+            InitialDirectory = System.IO.Directory.Exists(presetsFolder) ? presetsFolder : AppDomain.CurrentDomain.BaseDirectory
         };
 
         if (dialog.ShowDialog() == true)
@@ -237,7 +289,11 @@ public partial class ConfigurationViewModel : ObservableObject
 
         SelectedStream.EncodingProfiles.Remove(profile);
         HasChanges = true;
-        OnPropertyChanged(nameof(SelectedStream));
+
+        // Force UI refresh by temporarily changing SelectedStream
+        var current = SelectedStream;
+        SelectedStream = null;
+        SelectedStream = current;
     }
 
     [RelayCommand]

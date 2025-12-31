@@ -9,10 +9,12 @@ namespace AudioProcessorAndStreamer.Services.Streaming;
 public class StreamManager : IStreamManager
 {
     private readonly Dictionary<string, AudioStreamProcessor> _activeStreams = new();
+    private readonly Dictionary<string, CancellationTokenSource> _stopEncodingTimers = new();
     private readonly IVstHostService _vstHost;
     private readonly IFfmpegService _ffmpegService;
     private readonly AppConfiguration _config;
     private readonly object _lock = new();
+    private readonly TimeSpan _noListenerTimeout = TimeSpan.FromSeconds(30);
     private bool _disposed;
 
     public IReadOnlyDictionary<string, AudioStreamProcessor> ActiveStreams
@@ -61,7 +63,9 @@ public class StreamManager : IStreamManager
                 config,
                 _vstHost,
                 _ffmpegService,
-                hlsOutputDir);
+                hlsOutputDir,
+                _config.DebugAudioEnabled,
+                _config.LazyProcessing);
 
             processor.Stopped += (s, e) => OnStreamStopped(config.Id, config.Name);
 
@@ -153,10 +157,101 @@ public class StreamManager : IStreamManager
         }
     }
 
+    /// <summary>
+    /// Gets a stream processor by its stream path (not ID).
+    /// </summary>
+    private AudioStreamProcessor? GetStreamByPath(string streamPath)
+    {
+        lock (_lock)
+        {
+            return _activeStreams.Values.FirstOrDefault(p => p.StreamPath == streamPath);
+        }
+    }
+
+    public void OnListenerConnected(string streamPath)
+    {
+        if (!_config.LazyProcessing) return;
+
+        var processor = GetStreamByPath(streamPath);
+        if (processor == null || !processor.IsRunning) return;
+
+        // Cancel any pending stop timer for this stream
+        lock (_lock)
+        {
+            if (_stopEncodingTimers.TryGetValue(streamPath, out var cts))
+            {
+                cts.Cancel();
+                cts.Dispose();
+                _stopEncodingTimers.Remove(streamPath);
+                System.Diagnostics.Debug.WriteLine($"[{streamPath}] Cancelled encoding stop timer - listener connected");
+            }
+        }
+
+        // Start encoding if not already active
+        if (!processor.IsEncodingActive)
+        {
+            processor.StartEncoding();
+            System.Diagnostics.Debug.WriteLine($"[{streamPath}] Started encoding - first listener connected");
+        }
+    }
+
+    public void OnNoListeners(string streamPath)
+    {
+        if (!_config.LazyProcessing) return;
+
+        var processor = GetStreamByPath(streamPath);
+        if (processor == null || !processor.IsRunning || !processor.IsEncodingActive) return;
+
+        // Schedule encoding stop after timeout
+        lock (_lock)
+        {
+            // Cancel any existing timer
+            if (_stopEncodingTimers.TryGetValue(streamPath, out var existingCts))
+            {
+                existingCts.Cancel();
+                existingCts.Dispose();
+            }
+
+            var cts = new CancellationTokenSource();
+            _stopEncodingTimers[streamPath] = cts;
+
+            System.Diagnostics.Debug.WriteLine($"[{streamPath}] Scheduling encoding stop in {_noListenerTimeout.TotalSeconds}s - no listeners");
+
+            // Start timer to stop encoding
+            Task.Delay(_noListenerTimeout, cts.Token).ContinueWith(t =>
+            {
+                if (t.IsCanceled) return;
+
+                var proc = GetStreamByPath(streamPath);
+                if (proc != null && proc.IsRunning && proc.IsEncodingActive)
+                {
+                    proc.StopEncoding();
+                    System.Diagnostics.Debug.WriteLine($"[{streamPath}] Stopped encoding - no listeners for {_noListenerTimeout.TotalSeconds}s");
+                }
+
+                lock (_lock)
+                {
+                    _stopEncodingTimers.Remove(streamPath);
+                }
+            }, TaskScheduler.Default);
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+
+        // Cancel all pending stop timers
+        lock (_lock)
+        {
+            foreach (var cts in _stopEncodingTimers.Values)
+            {
+                cts.Cancel();
+                cts.Dispose();
+            }
+            _stopEncodingTimers.Clear();
+        }
 
         StopAllStreams();
     }

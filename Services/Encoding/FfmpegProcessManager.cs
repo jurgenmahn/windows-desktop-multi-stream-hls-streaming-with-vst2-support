@@ -12,6 +12,13 @@ public class FfmpegProcessManager : IDisposable
     private readonly BlockingCollection<byte[]> _writeQueue;
     private readonly Thread _writerThread;
     private readonly CancellationTokenSource _cts;
+    private readonly bool _debugAudioEnabled;
+    private readonly FileStream? _debugInputStream;
+    private readonly int _debugSampleRate;
+    private readonly int _debugChannels;
+    private readonly int _hlsSegmentDuration;
+    private readonly int _hlsPlaylistSize;
+    private long _debugBytesWritten;
     private bool _disposed;
 
     public EncodingProfile Profile { get; }
@@ -26,12 +33,38 @@ public class FfmpegProcessManager : IDisposable
         EncodingProfile profile,
         string outputPath,
         int inputSampleRate,
-        int inputChannels)
+        int inputChannels,
+        int hlsSegmentDuration,
+        int hlsPlaylistSize,
+        bool debugAudioEnabled = false)
     {
         Profile = profile;
         OutputPath = outputPath;
+        _debugAudioEnabled = debugAudioEnabled;
+        _debugSampleRate = inputSampleRate;
+        _debugChannels = inputChannels;
+        _hlsSegmentDuration = hlsSegmentDuration;
+        _hlsPlaylistSize = hlsPlaylistSize;
 
-        var arguments = BuildArguments(profile, outputPath, inputSampleRate, inputChannels);
+        var arguments = BuildArguments(profile, outputPath, inputSampleRate, inputChannels, hlsSegmentDuration, hlsPlaylistSize, debugAudioEnabled);
+
+        // Delete existing debug_output.wav file if it exists (for clean start)
+        if (debugAudioEnabled && profile.Name.Contains("192"))
+        {
+            var debugOutputPath = Path.Combine(Path.GetDirectoryName(outputPath)!, "debug_output.wav");
+            try
+            {
+                if (File.Exists(debugOutputPath))
+                {
+                    File.Delete(debugOutputPath);
+                    System.Diagnostics.Debug.WriteLine($"[FFmpeg] Deleted existing debug_output.wav");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FFmpeg] Failed to delete debug_output.wav: {ex.Message}");
+            }
+        }
 
         _ffmpegProcess = new Process
         {
@@ -64,6 +97,29 @@ public class FfmpegProcessManager : IDisposable
         _writeQueue = new BlockingCollection<byte[]>(boundedCapacity: 100);
         _cts = new CancellationTokenSource();
 
+        // Create debug input WAV file (only for first profile to avoid duplicates)
+        if (_debugAudioEnabled && profile.Name.Contains("192"))
+        {
+            var debugDir = Path.GetDirectoryName(outputPath)!;
+            var debugInputPath = Path.Combine(debugDir, "debug_input.wav");
+            try
+            {
+                // Delete existing file to ensure clean start
+                if (File.Exists(debugInputPath))
+                {
+                    File.Delete(debugInputPath);
+                }
+                _debugInputStream = new FileStream(debugInputPath, FileMode.Create, FileAccess.Write);
+                // Write placeholder WAV header (will be updated on close)
+                WriteWavHeader(_debugInputStream, inputSampleRate, inputChannels, 0);
+                System.Diagnostics.Debug.WriteLine($"[FFmpeg] Debug input file: {debugInputPath}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FFmpeg] Failed to create debug input file: {ex.Message}");
+            }
+        }
+
         _ffmpegProcess.Start();
         _ffmpegProcess.BeginErrorReadLine();
         _inputStream = _ffmpegProcess.StandardInput.BaseStream;
@@ -80,7 +136,10 @@ public class FfmpegProcessManager : IDisposable
         EncodingProfile profile,
         string outputPath,
         int inputSampleRate,
-        int inputChannels)
+        int inputChannels,
+        int hlsSegmentDuration,
+        int hlsPlaylistSize,
+        bool debugAudioEnabled)
     {
         var codec = profile.Codec switch
         {
@@ -94,8 +153,15 @@ public class FfmpegProcessManager : IDisposable
 
         // Input: raw PCM 16-bit signed little-endian
         // Output: HLS with specified codec
-        var args = $"-hide_banner -loglevel warning " +
+        System.Diagnostics.Debug.WriteLine($"[FFmpeg] Creating encoder: {profile.Name}, input={inputSampleRate}Hz/{inputChannels}ch, output={profile.SampleRate}Hz");
+
+        // -y: overwrite output files without asking
+        // -thread_queue_size: buffer input to handle irregular data delivery
+        // -af aresample=async=1: fix timing discontinuities by stretching/compressing audio
+        var args = $"-y -hide_banner -loglevel warning " +
+                   $"-thread_queue_size 4096 " +
                    $"-f s16le -ar {inputSampleRate} -ac {inputChannels} -i - " +
+                   $"-af aresample=async=1:first_pts=0 " +
                    $"-c:a {codec} -b:a {bitrateK}k ";
 
         // Add codec-specific options
@@ -115,12 +181,24 @@ public class FfmpegProcessManager : IDisposable
         }
 
         // HLS output options
+        // Use unique segment filenames per profile to avoid conflicts
+        var profileBaseName = Path.GetFileNameWithoutExtension(outputPath);
+        var segmentPattern = Path.Combine(Path.GetDirectoryName(outputPath)!, $"{profileBaseName}_%03d.ts");
+
         args += $"-f hls " +
-                $"-hls_time {profile.SegmentDuration} " +
-                $"-hls_list_size {profile.PlaylistSize} " +
+                $"-hls_time {hlsSegmentDuration} " +
+                $"-hls_list_size {hlsPlaylistSize} " +
                 $"-hls_flags delete_segments+append_list " +
-                $"-hls_segment_filename \"{Path.Combine(Path.GetDirectoryName(outputPath)!, "segment_%03d.ts")}\" " +
+                $"-hls_segment_filename \"{segmentPattern}\" " +
                 $"\"{outputPath}\"";
+
+        // Add debug WAV output (only for 192kbps profile to avoid duplicates)
+        if (debugAudioEnabled && profile.Name.Contains("192"))
+        {
+            var debugOutputPath = Path.Combine(Path.GetDirectoryName(outputPath)!, "debug_output.wav");
+            args += $" -c:a pcm_s16le \"{debugOutputPath}\"";
+            System.Diagnostics.Debug.WriteLine($"[FFmpeg] Debug output file: {debugOutputPath}");
+        }
 
         return args;
     }
@@ -134,7 +212,13 @@ public class FfmpegProcessManager : IDisposable
                 try
                 {
                     _inputStream.Write(data, 0, data.Length);
-                    _inputStream.Flush();
+
+                    // Write to debug input file if enabled
+                    if (_debugInputStream != null)
+                    {
+                        _debugInputStream.Write(data, 0, data.Length);
+                        _debugBytesWritten += data.Length;
+                    }
                 }
                 catch (IOException)
                 {
@@ -146,6 +230,52 @@ public class FfmpegProcessManager : IDisposable
         catch (OperationCanceledException)
         {
             // Expected on shutdown
+        }
+    }
+
+    private static void WriteWavHeader(Stream stream, int sampleRate, int channels, int dataSize)
+    {
+        using var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true);
+        int bitsPerSample = 16;
+        int byteRate = sampleRate * channels * bitsPerSample / 8;
+        short blockAlign = (short)(channels * bitsPerSample / 8);
+
+        // RIFF header
+        writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF"));
+        writer.Write(36 + dataSize); // File size - 8
+        writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVE"));
+
+        // fmt subchunk
+        writer.Write(System.Text.Encoding.ASCII.GetBytes("fmt "));
+        writer.Write(16); // Subchunk1Size (16 for PCM)
+        writer.Write((short)1); // AudioFormat (1 = PCM)
+        writer.Write((short)channels);
+        writer.Write(sampleRate);
+        writer.Write(byteRate);
+        writer.Write(blockAlign);
+        writer.Write((short)bitsPerSample);
+
+        // data subchunk
+        writer.Write(System.Text.Encoding.ASCII.GetBytes("data"));
+        writer.Write(dataSize);
+    }
+
+    private void FinalizeDebugWavFile()
+    {
+        if (_debugInputStream == null) return;
+
+        try
+        {
+            // Seek back and update WAV header with correct size
+            _debugInputStream.Seek(0, SeekOrigin.Begin);
+            WriteWavHeader(_debugInputStream, _debugSampleRate, _debugChannels, (int)_debugBytesWritten);
+            _debugInputStream.Close();
+            _debugInputStream.Dispose();
+            System.Diagnostics.Debug.WriteLine($"[FFmpeg] Debug input file finalized: {_debugBytesWritten} bytes");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[FFmpeg] Failed to finalize debug WAV: {ex.Message}");
         }
     }
 
@@ -175,6 +305,9 @@ public class FfmpegProcessManager : IDisposable
 
         _cts.Cancel();
         _writeQueue.CompleteAdding();
+
+        // Finalize debug WAV file
+        FinalizeDebugWavFile();
 
         try
         {

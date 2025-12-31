@@ -14,6 +14,16 @@ public interface IStreamManager : IDisposable
     void StopStream(string streamId);
     void StopAllStreams();
     AudioStreamProcessor? GetStream(string streamId);
+
+    /// <summary>
+    /// Called when a listener connects to a stream. Starts encoding if lazy processing is enabled.
+    /// </summary>
+    void OnListenerConnected(string streamPath);
+
+    /// <summary>
+    /// Called when all listeners disconnect from a stream. Schedules encoding stop if lazy processing is enabled.
+    /// </summary>
+    void OnNoListeners(string streamPath);
 }
 
 public class StreamEventArgs : EventArgs

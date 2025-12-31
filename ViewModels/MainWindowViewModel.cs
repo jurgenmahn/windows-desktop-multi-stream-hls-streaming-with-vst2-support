@@ -6,6 +6,7 @@ using System.Windows;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
 using AudioProcessorAndStreamer.Models;
+using AudioProcessorAndStreamer.Services.Audio;
 using AudioProcessorAndStreamer.Services.Streaming;
 using AudioProcessorAndStreamer.Services.Web;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -18,6 +19,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 {
     private readonly IStreamManager _streamManager;
     private readonly HlsWebServer _webServer;
+    private readonly IMonitorOutputService _monitorService;
     private readonly AppConfiguration _config;
     private readonly string _configPath;
     private readonly string _appConfigPath;
@@ -44,10 +46,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public MainWindowViewModel(
         IStreamManager streamManager,
         HlsWebServer webServer,
+        IMonitorOutputService monitorService,
         IOptions<AppConfiguration> config)
     {
         _streamManager = streamManager;
         _webServer = webServer;
+        _monitorService = monitorService;
         _config = config.Value;
         _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "streams.json");
         _appConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appconfig.json");
@@ -77,6 +81,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     _config.HlsOutputDirectory = savedConfig.HlsOutputDirectory;
                     _config.LazyProcessing = savedConfig.LazyProcessing;
                     _config.StreamsPagePath = savedConfig.StreamsPagePath;
+                    _config.DebugAudioEnabled = savedConfig.DebugAudioEnabled;
+                    _config.MonitorOutputDevice = savedConfig.MonitorOutputDevice;
                 }
             }
             catch (Exception ex)
@@ -113,7 +119,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 {
                     foreach (var config in streamConfigs)
                     {
-                        var vm = new StreamViewModel(config, _streamManager);
+                        var vm = new StreamViewModel(config, _streamManager, _monitorService);
                         Streams.Add(vm);
                     }
                     return;
@@ -128,7 +134,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         // Fall back to appsettings.json config
         foreach (var config in _config.Streams)
         {
-            var vm = new StreamViewModel(config, _streamManager);
+            var vm = new StreamViewModel(config, _streamManager, _monitorService);
             Streams.Add(vm);
         }
     }
@@ -251,7 +257,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             }
         };
 
-        var vm = new StreamViewModel(config, _streamManager);
+        var vm = new StreamViewModel(config, _streamManager, _monitorService);
         Streams.Add(vm);
         SaveStreamsToConfig();
         UpdateWebServerStreams();
@@ -290,24 +296,54 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 _config.HlsOutputDirectory = dialog.ResultConfiguration.HlsOutputDirectory;
                 _config.LazyProcessing = dialog.ResultConfiguration.LazyProcessing;
                 _config.StreamsPagePath = dialog.ResultConfiguration.StreamsPagePath;
+                _config.DebugAudioEnabled = dialog.ResultConfiguration.DebugAudioEnabled;
+                _config.MonitorOutputDevice = dialog.ResultConfiguration.MonitorOutputDevice;
                 SaveAppConfig();
+
+                // Update monitor output device immediately
+                _monitorService.SetOutputDevice(_config.MonitorOutputDevice);
             }
 
-            // Stop all streams before updating
-            StopAllStreams();
-
-            // Rebuild stream list
+            // Prepare all streams for reload (show "Reloading..." status)
             foreach (var stream in Streams)
             {
-                stream.Dispose();
+                stream.PrepareForReload();
             }
+
+            // Small delay to let UI update
+            await Task.Delay(50);
+
+            // Stop all streams on background thread to avoid UI freeze
+            await Task.Run(() => _streamManager.StopAllStreams());
+            AreAllStreamsRunning = false;
+
+            // Dispose old streams on background thread
+            var oldStreams = Streams.ToList();
+            await Task.Run(() =>
+            {
+                foreach (var stream in oldStreams)
+                {
+                    stream.Dispose();
+                }
+            });
             Streams.Clear();
 
+            // Add new streams
             foreach (var config in dialog.ResultStreams)
             {
-                var vm = new StreamViewModel(config, _streamManager);
+                var vm = new StreamViewModel(config, _streamManager, _monitorService);
+
+                // Mark streams that need to be restarted
+                if (runningStreamIds.Contains(config.Id))
+                {
+                    vm.SetWaitingForRestart();
+                }
+
                 Streams.Add(vm);
             }
+
+            // Let UI update after adding streams
+            await Task.Delay(50);
 
             SaveStreamsToConfig();
             UpdateWebServerStreams();
@@ -318,10 +354,20 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 await StartServerAsync();
             }
 
-            // Restart streams that were previously running (by matching IDs)
-            foreach (var stream in Streams.Where(s => runningStreamIds.Contains(s.Id)))
+            // Restart streams one by one with delays
+            var streamsToRestart = Streams.Where(s => runningStreamIds.Contains(s.Id)).ToList();
+            foreach (var stream in streamsToRestart)
             {
-                stream.StartCommand.Execute(null);
+                await stream.CompleteReloadAsync(shouldRestart: true);
+
+                // Wait between stream restarts to prevent overwhelming the system
+                await Task.Delay(300);
+            }
+
+            // Complete reload for streams that don't need to restart
+            foreach (var stream in Streams.Where(s => !runningStreamIds.Contains(s.Id)))
+            {
+                await stream.CompleteReloadAsync(shouldRestart: false);
             }
         }
     }

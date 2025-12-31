@@ -270,3 +270,5 @@ C:\Users\jurge\source\repos\AudioProcessorAndStreamer\bin\x64\Debug\net8.0-windo
 C:\Users\jurge\source\repos\AudioProcessorAndStreamer\bin\x64\Debug\net8.0-windows\win-x64\Assets\logo.png
 C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\win-x64\Views\AboutDialog.baml
 C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\win-x64\Views\AboutDialog.g.cs
+C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\win-x64\Controls\SpectrumAnalyzerControl.baml
+C:\Users\jurge\source\repos\AudioProcessorAndStreamer\obj\x64\Debug\net8.0-windows\win-x64\Controls\SpectrumAnalyzerControl.g.cs

@@ -331,7 +331,8 @@
                         <Grid Margin="0,12,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Margin="0,0,8,0">
@@ -340,7 +341,41 @@
                                 <TextBox Text="{Binding StreamsPagePath}"/>
                             </StackPanel>
 
-                            <StackPanel Grid.Column="1" VerticalAlignment="Bottom">
+                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                <TextBlock Text="Monitor Output Device" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                                <TextBlock Text="Audio output for monitoring streams" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox Grid.Column="0" ItemsSource="{Binding OutputDevices}"
+                                              SelectedItem="{Binding MonitorOutputDevice}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding}" Value="">
+                                                                    <Setter Property="Text" Value="(Default Device)"/>
+                                                                    <Setter Property="Foreground" Value="#666666"/>
+                                                                    <Setter Property="FontStyle" Value="Italic"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <Button Grid.Column="1" Content="↻" Style="{StaticResource SmallButton}" Width="24"
+                                            ToolTip="Refresh output devices"
+                                            Command="{Binding RefreshOutputDevicesCommand}"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
                                 <CheckBox IsChecked="{Binding LazyProcessing}" Margin="0,0,0,4">
                                     <StackPanel>
                                         <TextBlock Text="Lazy Processing (On-Demand)" FontWeight="SemiBold"/>
@@ -350,6 +385,27 @@
                                 </CheckBox>
                             </StackPanel>
                         </Grid>
+
+                        <!-- Debug Audio -->
+                        <Border BorderBrush="#FFB900" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,12,0,0"
+                                Background="#FFFBF0">
+                            <CheckBox IsChecked="{Binding DebugAudioEnabled}">
+                                <StackPanel>
+                                    <TextBlock Text="Enable Debug Audio Recording" FontWeight="SemiBold" Foreground="#996600"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="#666666" Margin="0,4,0,0">
+                                        <Run Text="Creates WAV files in each stream's output folder for troubleshooting:"/>
+                                        <LineBreak/>
+                                        <Run Text="• debug_before_vst.wav - Raw audio from soundcard"/>
+                                        <LineBreak/>
+                                        <Run Text="• debug_input.wav - Audio after VST processing"/>
+                                        <LineBreak/>
+                                        <Run Text="• debug_output.wav - FFmpeg encoded output"/>
+                                    </TextBlock>
+                                    <TextBlock Text="⚠ Warning: These are uncompressed PCM files that grow continuously. Disable when not debugging to avoid filling up disk space."
+                                               TextWrapping="Wrap" FontSize="10" Foreground="#CC6600" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </CheckBox>
+                        </Border>
                     </StackPanel>
                 </Border>
 

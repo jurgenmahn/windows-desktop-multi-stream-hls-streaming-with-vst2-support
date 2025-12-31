@@ -1,0 +1,299 @@
+[
+  {
+    "Id": "14a8dc70-9c74-4e40-855f-7d7b81ba2b1e",
+    "Name": "Stream 1",
+    "AudioInput": {
+      "DriverType": 0,
+      "DeviceId": "{0.0.0.00000000}.{07056454-d31e-4815-a9fc-abb534dea355}",
+      "DeviceName": "Headphones (SteelSeries Arctis 9 Game) (Loopback)",
+      "SampleRate": 48000,
+      "Channels": 2,
+      "BufferSize": 1024
+    },
+    "VstPlugins": [
+      {
+        "PluginPath": "Plugins/vst_stereo_tool_64.dll",
+        "PluginName": "Stereo Tool",
+        "Order": 0,
+        "IsBypassed": false,
+        "PresetFilePath": "C:\\Users\\jurge\\Downloads\\Impact MX Edit by Krokodil V2.1.sts",
+        "PresetData": null
+      }
+    ],
+    "EncodingProfiles": [
+      {
+        "Name": "64kbps AAC",
+        "Codec": 0,
+        "Bitrate": 64000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      },
+      {
+        "Name": "128kbps AAC",
+        "Codec": 0,
+        "Bitrate": 128000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      },
+      {
+        "Name": "192kbps AAC",
+        "Codec": 0,
+        "Bitrate": 192000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      }
+    ],
+    "StreamPath": "stream1",
+    "LogoPath": "C:\\Users\\jurge\\Downloads\\www.9yards.nl_en_.png",
+    "IsEnabled": true
+  },
+  {
+    "Id": "c554c147-0aff-4460-9c80-bfad174fd7bd",
+    "Name": "Stream 2",
+    "AudioInput": {
+      "DriverType": 0,
+      "DeviceId": "{0.0.0.00000000}.{07056454-d31e-4815-a9fc-abb534dea355}",
+      "DeviceName": "Headphones (SteelSeries Arctis 9 Game) (Loopback)",
+      "SampleRate": 48000,
+      "Channels": 2,
+      "BufferSize": 1024
+    },
+    "VstPlugins": [
+      {
+        "PluginPath": "Plugins/vst_stereo_tool_64.dll",
+        "PluginName": "Stereo Tool",
+        "Order": 0,
+        "IsBypassed": false,
+        "PresetFilePath": "C:\\Users\\jurge\\Downloads\\Raf_Del_Pizzo - MODERN SMOOTH_v5 - 2025-06-27.sts",
+        "PresetData": null
+      }
+    ],
+    "EncodingProfiles": [
+      {
+        "Name": "64kbps AAC",
+        "Codec": 0,
+        "Bitrate": 64000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      },
+      {
+        "Name": "128kbps AAC",
+        "Codec": 0,
+        "Bitrate": 128000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      },
+      {
+        "Name": "192kbps AAC",
+        "Codec": 0,
+        "Bitrate": 192000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      }
+    ],
+    "StreamPath": "stream2",
+    "LogoPath": "C:\\Users\\jurge\\Downloads\\www.9yards.nl_en_.png",
+    "IsEnabled": true
+  },
+  {
+    "Id": "3da32dd0-78a8-4fb8-89f5-839b0d6d1241",
+    "Name": "Stream 3",
+    "AudioInput": {
+      "DriverType": 0,
+      "DeviceId": "{0.0.0.00000000}.{07056454-d31e-4815-a9fc-abb534dea355}",
+      "DeviceName": "Headphones (SteelSeries Arctis 9 Game) (Loopback)",
+      "SampleRate": 48000,
+      "Channels": 2,
+      "BufferSize": 1024
+    },
+    "VstPlugins": [
+      {
+        "PluginPath": "Plugins/vst_stereo_tool_64.dll",
+        "PluginName": "Stereo Tool",
+        "Order": 0,
+        "IsBypassed": false,
+        "PresetFilePath": "C:\\Users\\jurge\\Downloads\\TDCat Dense.sts",
+        "PresetData": null
+      }
+    ],
+    "EncodingProfiles": [
+      {
+        "Name": "64kbps AAC",
+        "Codec": 0,
+        "Bitrate": 64000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      },
+      {
+        "Name": "128kbps AAC",
+        "Codec": 0,
+        "Bitrate": 128000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      },
+      {
+        "Name": "192kbps AAC",
+        "Codec": 0,
+        "Bitrate": 192000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      }
+    ],
+    "StreamPath": "stream3",
+    "LogoPath": "C:\\Users\\jurge\\Downloads\\www.9yards.nl_en_.png",
+    "IsEnabled": true
+  },
+  {
+    "Id": "2e8d2b1b-58aa-4b96-9a31-71a57055b014",
+    "Name": "Stream 4",
+    "AudioInput": {
+      "DriverType": 0,
+      "DeviceId": "{0.0.0.00000000}.{07056454-d31e-4815-a9fc-abb534dea355}",
+      "DeviceName": "Headphones (SteelSeries Arctis 9 Game) (Loopback)",
+      "SampleRate": 48000,
+      "Channels": 2,
+      "BufferSize": 1024
+    },
+    "VstPlugins": [
+      {
+        "PluginPath": "Plugins/vst_stereo_tool_64.dll",
+        "PluginName": "Stereo Tool",
+        "Order": 0,
+        "IsBypassed": false,
+        "PresetFilePath": "C:\\Users\\jurge\\Downloads\\Impact MX Edit by Krokodil V2.1.sts",
+        "PresetData": null
+      }
+    ],
+    "EncodingProfiles": [
+      {
+        "Name": "64kbps AAC",
+        "Codec": 0,
+        "Bitrate": 64000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      },
+      {
+        "Name": "128kbps AAC",
+        "Codec": 0,
+        "Bitrate": 128000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      },
+      {
+        "Name": "192kbps AAC",
+        "Codec": 0,
+        "Bitrate": 192000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      }
+    ],
+    "StreamPath": "stream4",
+    "LogoPath": null,
+    "IsEnabled": true
+  },
+  {
+    "Id": "a55de8a6-162c-4be2-9f8a-2ffc73853c90",
+    "Name": "Stream 5",
+    "AudioInput": {
+      "DriverType": 0,
+      "DeviceId": "{0.0.0.00000000}.{07056454-d31e-4815-a9fc-abb534dea355}",
+      "DeviceName": "Headphones (SteelSeries Arctis 9 Game) (Loopback)",
+      "SampleRate": 48000,
+      "Channels": 2,
+      "BufferSize": 1024
+    },
+    "VstPlugins": [
+      {
+        "PluginPath": "Plugins/vst_stereo_tool_64.dll",
+        "PluginName": "Stereo Tool",
+        "Order": 0,
+        "IsBypassed": false,
+        "PresetFilePath": "C:\\Users\\jurge\\Downloads\\Raf_Del_Pizzo - MODERN SMOOTH_v5 - 2025-06-27.sts",
+        "PresetData": null
+      }
+    ],
+    "EncodingProfiles": [
+      {
+        "Name": "64kbps AAC",
+        "Codec": 0,
+        "Bitrate": 64000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      },
+      {
+        "Name": "128kbps AAC",
+        "Codec": 0,
+        "Bitrate": 128000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      },
+      {
+        "Name": "192kbps AAC",
+        "Codec": 0,
+        "Bitrate": 192000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      }
+    ],
+    "StreamPath": "stream5",
+    "LogoPath": null,
+    "IsEnabled": true
+  },
+  {
+    "Id": "5f8a999b-8a4e-4caa-abd1-4d7f68d11d76",
+    "Name": "Stream 6",
+    "AudioInput": {
+      "DriverType": 0,
+      "DeviceId": "{0.0.0.00000000}.{07056454-d31e-4815-a9fc-abb534dea355}",
+      "DeviceName": "Headphones (SteelSeries Arctis 9 Game) (Loopback)",
+      "SampleRate": 48000,
+      "Channels": 2,
+      "BufferSize": 1024
+    },
+    "VstPlugins": [],
+    "EncodingProfiles": [
+      {
+        "Name": "64kbps AAC",
+        "Codec": 0,
+        "Bitrate": 64000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      },
+      {
+        "Name": "128kbps AAC",
+        "Codec": 0,
+        "Bitrate": 128000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      },
+      {
+        "Name": "192kbps AAC",
+        "Codec": 0,
+        "Bitrate": 192000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
+      }
+    ],
+    "StreamPath": "stream6",
+    "LogoPath": null,
+    "IsEnabled": true
+  }
+]

@@ -8,6 +8,8 @@ public class FfmpegService : IFfmpegService
 {
     private readonly string _ffmpegPath;
     private readonly bool _isAvailable;
+    private readonly int _hlsSegmentDuration;
+    private readonly int _hlsPlaylistSize;
 
     public bool IsAvailable => _isAvailable;
     public string FfmpegPath => _ffmpegPath;
@@ -16,6 +18,8 @@ public class FfmpegService : IFfmpegService
     {
         _ffmpegPath = ResolveFfmpegPath(config.Value.FfmpegPath);
         _isAvailable = File.Exists(_ffmpegPath);
+        _hlsSegmentDuration = config.Value.HlsSegmentDuration;
+        _hlsPlaylistSize = config.Value.HlsPlaylistSize;
 
         if (_isAvailable)
         {
@@ -65,7 +69,8 @@ public class FfmpegService : IFfmpegService
         EncodingProfile profile,
         string outputPath,
         int inputSampleRate,
-        int inputChannels)
+        int inputChannels,
+        bool debugAudioEnabled = false)
     {
         if (!_isAvailable)
         {
@@ -84,6 +89,9 @@ public class FfmpegService : IFfmpegService
             profile,
             outputPath,
             inputSampleRate,
-            inputChannels);
+            inputChannels,
+            _hlsSegmentDuration,
+            _hlsPlaylistSize,
+            debugAudioEnabled);
     }
 }

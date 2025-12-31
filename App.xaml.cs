@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using Application = System.Windows.Application;
 using AudioProcessorAndStreamer.Models;
+using AudioProcessorAndStreamer.Services.Audio;
 using AudioProcessorAndStreamer.Services.Encoding;
 using AudioProcessorAndStreamer.Services.Streaming;
 using AudioProcessorAndStreamer.Services.Vst;
@@ -47,6 +48,7 @@ public partial class App : Application
                 services.AddSingleton<IVstHostService, VstHostService>();
                 services.AddSingleton<IFfmpegService, FfmpegService>();
                 services.AddSingleton<IStreamManager, StreamManager>();
+                services.AddSingleton<IMonitorOutputService, MonitorOutputService>();
                 services.AddSingleton<HlsWebServer>();
 
                 // ViewModels
@@ -72,6 +74,9 @@ public partial class App : Application
             // Cleanup
             var streamManager = _host.Services.GetService<IStreamManager>();
             streamManager?.Dispose();
+
+            var monitorService = _host.Services.GetService<IMonitorOutputService>();
+            monitorService?.Dispose();
 
             var webServer = _host.Services.GetService<HlsWebServer>();
             if (webServer != null)

@@ -1,0 +1,89 @@
+<Window x:Class="AudioProcessorAndStreamer.Views.AboutDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="About"
+        Height="320" Width="450"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#1A1A1A">
+
+    <Grid Margin="30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0"
+                   Text="Audio Processor &amp; Streamer"
+                   FontSize="24"
+                   FontWeight="Bold"
+                   Foreground="#0078D4"
+                   HorizontalAlignment="Center"/>
+
+        <!-- Tagline -->
+        <TextBlock Grid.Row="1"
+                   Text="Professional HLS Audio Broadcasting Suite"
+                   FontSize="12"
+                   Foreground="#808080"
+                   HorizontalAlignment="Center"
+                   Margin="0,4,0,20"/>
+
+        <!-- Description -->
+        <TextBlock Grid.Row="2"
+                   TextWrapping="Wrap"
+                   TextAlignment="Center"
+                   Foreground="#CCCCCC"
+                   FontSize="13"
+                   LineHeight="22">
+            <Run>A powerful radio streaming and audio processing solution</Run>
+            <LineBreak/>
+            <Run>featuring real-time VST plugin support, including the renowned</Run>
+            <LineBreak/>
+            <Run FontWeight="SemiBold" Foreground="#32CD32">Stereo Tool</Run>
+            <Run>audio processor, with seamless HLS encoding</Run>
+            <LineBreak/>
+            <Run>for modern web-based broadcasting.</Run>
+        </TextBlock>
+
+        <!-- Credits -->
+        <StackPanel Grid.Row="3" HorizontalAlignment="Center" Margin="0,20,0,0">
+            <TextBlock Text="Specially developed for"
+                       FontSize="11"
+                       Foreground="#666666"
+                       HorizontalAlignment="Center"/>
+            <TextBlock Text="Robin Lefeber"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       Foreground="#FFFFFF"
+                       HorizontalAlignment="Center"
+                       Margin="0,4,0,4"/>
+            <TextBlock Text="by"
+                       FontSize="11"
+                       Foreground="#666666"
+                       HorizontalAlignment="Center"/>
+            <TextBlock Text="9Yards"
+                       FontSize="18"
+                       FontWeight="Bold"
+                       Foreground="#0078D4"
+                       HorizontalAlignment="Center"
+                       Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Close Button -->
+        <Button Grid.Row="4"
+                Content="Close"
+                Width="100"
+                Padding="12,8"
+                Margin="0,20,0,0"
+                HorizontalAlignment="Center"
+                Background="#0078D4"
+                Foreground="White"
+                BorderThickness="0"
+                Cursor="Hand"
+                Click="CloseButton_Click"/>
+    </Grid>
+</Window>

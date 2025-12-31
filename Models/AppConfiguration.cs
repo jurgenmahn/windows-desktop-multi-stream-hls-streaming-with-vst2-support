@@ -20,6 +20,28 @@ public class AppConfiguration
     public string StreamsPagePath { get; set; } = "/streams";
 
     /// <summary>
+    /// When enabled, creates debug WAV files in each stream's HLS output folder for troubleshooting audio issues.
+    /// WARNING: This generates large uncompressed audio files that grow continuously while streaming.
+    /// </summary>
+    public bool DebugAudioEnabled { get; set; } = false;
+
+    /// <summary>
+    /// Duration of each HLS segment in seconds. Lower values reduce latency but increase overhead.
+    /// </summary>
+    public int HlsSegmentDuration { get; set; } = 4;
+
+    /// <summary>
+    /// Number of segments to keep in the HLS playlist (history). Higher values allow more rewind capability.
+    /// </summary>
+    public int HlsPlaylistSize { get; set; } = 5;
+
+    /// <summary>
+    /// The audio output device name for monitor output. Leave empty to use the default device.
+    /// Use the exact device name as shown in Windows audio settings.
+    /// </summary>
+    public string MonitorOutputDevice { get; set; } = "";
+
+    /// <summary>
     /// Returns the base URL as configured (no auto port appending - allows for proxy setups).
     /// </summary>
     public string GetFullBaseUrl()

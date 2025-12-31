@@ -49,31 +49,29 @@ public partial class MainWindow : Window
         if (sender is not FrameworkElement element) return;
         if (element.DataContext is not StreamViewModel streamVm) return;
 
-        // Find the oscilloscopes in the visual tree
-        var inputScope = FindOscilloscopeByTag(element, "InputScope");
-        var outputScope = FindOscilloscopeByTag(element, "OutputScope");
+        // Find both spectrum analyzers in the visual tree
+        var inputAnalyzer = FindSpectrumAnalyzerByTag(element, "InputSpectrumAnalyzer");
+        var outputAnalyzer = FindSpectrumAnalyzerByTag(element, "OutputSpectrumAnalyzer");
 
-        System.Diagnostics.Debug.WriteLine($"[{streamVm.Name}] Attaching oscilloscopes: Input={inputScope != null}, Output={outputScope != null}");
-
-        if (inputScope != null && outputScope != null)
+        if (inputAnalyzer != null && outputAnalyzer != null)
         {
-            streamVm.AttachOscilloscopes(inputScope, outputScope);
+            streamVm.AttachSpectrumAnalyzers(inputAnalyzer, outputAnalyzer);
         }
     }
 
-    private static OscilloscopeControl? FindOscilloscopeByTag(DependencyObject parent, string tag)
+    private static SpectrumAnalyzerControl? FindSpectrumAnalyzerByTag(DependencyObject parent, string tag)
     {
         int childCount = VisualTreeHelper.GetChildrenCount(parent);
         for (int i = 0; i < childCount; i++)
         {
             var child = VisualTreeHelper.GetChild(parent, i);
 
-            if (child is OscilloscopeControl oscilloscope && oscilloscope.Tag?.ToString() == tag)
+            if (child is SpectrumAnalyzerControl analyzer && analyzer.Tag?.ToString() == tag)
             {
-                return oscilloscope;
+                return analyzer;
             }
 
-            var result = FindOscilloscopeByTag(child, tag);
+            var result = FindSpectrumAnalyzerByTag(child, tag);
             if (result != null)
             {
                 return result;

@@ -11,6 +11,7 @@ public class AudioStreamProcessor : IDisposable
 {
     private readonly StreamConfiguration _config;
     private readonly IAudioCaptureService _capture;
+    private readonly IFfmpegService _ffmpegService;
     private readonly List<VstPluginInstance> _vstChain;
     private readonly List<FfmpegProcessManager> _encoders;
     private readonly CircularAudioBuffer _inputVisualizationBuffer;
@@ -18,13 +19,28 @@ public class AudioStreamProcessor : IDisposable
     private readonly int _blockSize;
     private readonly int _actualSampleRate;
     private readonly int _actualChannels;
+    private readonly string _streamOutputDir;
+    private readonly bool _debugAudioEnabled;
+    private readonly bool _lazyProcessing;
+    private FileStream? _debugBeforeVstStream;
+    private long _debugBeforeVstBytes;
     private float[] _processBuffer;
+    private float[] _vstInputBuffer;      // Fixed-size buffer for VST input
+    private float[] _vstOutputBuffer;     // Fixed-size buffer for VST output
+    private float[] _accumulatorBuffer;   // Ring buffer for accumulating samples
+    private int _accumulatorWritePos;     // Write position in accumulator
+    private int _accumulatorReadPos;      // Read position in accumulator
+    private int _accumulatorCount;        // Number of samples in accumulator
+    private readonly int _vstBlockSamples; // Block size in total samples (blockSize * channels)
     private bool _isRunning;
+    private bool _isEncodingActive;
     private bool _disposed;
 
     public string Id => _config.Id;
+    public string StreamPath => _config.StreamPath ?? _config.Id;
     public string Name => _config.Name;
     public bool IsRunning => _isRunning;
+    public bool IsEncodingActive => _isEncodingActive;
     public int ActualSampleRate => _actualSampleRate;
     public int ConfiguredSampleRate => _config.AudioInput.SampleRate;
     public bool HasSampleRateMismatch => _config.AudioInput.DriverType == AudioDriverType.Wasapi
@@ -34,15 +50,21 @@ public class AudioStreamProcessor : IDisposable
     public event EventHandler<float[]>? OutputSamplesAvailable;
     public event EventHandler<string>? EncoderMessage;
     public event EventHandler? Stopped;
+    public event EventHandler<bool>? EncodingStateChanged;
 
     public AudioStreamProcessor(
         StreamConfiguration config,
         IVstHostService vstHost,
         IFfmpegService ffmpegService,
-        string hlsOutputDirectory)
+        string hlsOutputDirectory,
+        bool debugAudioEnabled = false,
+        bool lazyProcessing = false)
     {
         _config = config;
         _blockSize = config.AudioInput.BufferSize;
+        _debugAudioEnabled = debugAudioEnabled;
+        _lazyProcessing = lazyProcessing;
+        _ffmpegService = ffmpegService;
 
         // Create audio capture based on driver type
         _capture = config.AudioInput.DriverType switch
@@ -69,6 +91,16 @@ public class AudioStreamProcessor : IDisposable
         _inputVisualizationBuffer = new CircularAudioBuffer(bufferSize);
         _outputVisualizationBuffer = new CircularAudioBuffer(bufferSize);
         _processBuffer = new float[_blockSize * _actualChannels * 2];
+
+        // Initialize VST block buffering - process in fixed-size blocks for stable VST timing
+        _vstBlockSamples = _blockSize * _actualChannels;
+        _vstInputBuffer = new float[_vstBlockSamples];
+        _vstOutputBuffer = new float[_vstBlockSamples];
+        // Accumulator holds 4x block size to handle timing variations
+        _accumulatorBuffer = new float[_vstBlockSamples * 4];
+        _accumulatorWritePos = 0;
+        _accumulatorReadPos = 0;
+        _accumulatorCount = 0;
 
         // Load VST plugins in order
         _vstChain = new List<VstPluginInstance>();
@@ -97,38 +129,22 @@ public class AudioStreamProcessor : IDisposable
             }
         }
 
-        // Create encoders for each profile
+        // Initialize encoder list and output directory
         _encoders = new List<FfmpegProcessManager>();
-        var streamOutputDir = Path.Combine(hlsOutputDirectory, config.StreamPath ?? config.Id);
+        _streamOutputDir = Path.Combine(hlsOutputDirectory, config.StreamPath ?? config.Id);
 
         // Ensure output directory exists
-        Directory.CreateDirectory(streamOutputDir);
+        Directory.CreateDirectory(_streamOutputDir);
 
-        foreach (var profile in config.EncodingProfiles)
+        // Create master playlist referencing all encoding profiles (needed even for lazy processing)
+        CreateMasterPlaylist(_streamOutputDir, config.EncodingProfiles);
+
+        // If not using lazy processing, create encoders immediately
+        if (!_lazyProcessing)
         {
-            var outputFile = Path.Combine(streamOutputDir, $"{profile.Name.ToLowerInvariant().Replace(" ", "_")}.m3u8");
-
-            try
-            {
-                var encoder = ffmpegService.CreateEncoder(
-                    profile,
-                    outputFile,
-                    _actualSampleRate,
-                    _actualChannels);
-
-                encoder.ErrorDataReceived += (s, msg) => EncoderMessage?.Invoke(this, msg);
-                encoder.ProcessExited += OnEncoderExited;
-
-                _encoders.Add(encoder);
-            }
-            catch (Exception ex)
-            {
-                EncoderMessage?.Invoke(this, $"Failed to create encoder for {profile.Name}: {ex.Message}");
-            }
+            CreateEncoders();
+            _isEncodingActive = true;
         }
-
-        // Create master playlist referencing all encoding profiles
-        CreateMasterPlaylist(streamOutputDir, config.EncodingProfiles);
 
         // Wire up audio processing
         _capture.DataAvailable += OnAudioDataAvailable;
@@ -142,7 +158,8 @@ public class AudioStreamProcessor : IDisposable
         sb.AppendLine("#EXTM3U");
         sb.AppendLine("#EXT-X-VERSION:3");
 
-        foreach (var profile in profiles)
+        // Order by bitrate descending so highest quality is first (players often pick first)
+        foreach (var profile in profiles.OrderByDescending(p => p.Bitrate))
         {
             var playlistName = $"{profile.Name.ToLowerInvariant().Replace(" ", "_")}.m3u8";
             var bandwidth = profile.Bitrate;
@@ -170,11 +187,130 @@ public class AudioStreamProcessor : IDisposable
         }
     }
 
+    private void CreateEncoders()
+    {
+        if (_encoders.Count > 0) return; // Already created
+
+        // Create debug WAV file for raw capture (before VST)
+        if (_debugAudioEnabled)
+        {
+            var debugPath = Path.Combine(_streamOutputDir, "debug_before_vst.wav");
+            try
+            {
+                if (File.Exists(debugPath))
+                {
+                    File.Delete(debugPath);
+                }
+                _debugBeforeVstStream = new FileStream(debugPath, FileMode.Create, FileAccess.Write);
+                WriteWavHeader(_debugBeforeVstStream, _actualSampleRate, _actualChannels, 0);
+                System.Diagnostics.Debug.WriteLine($"[{_config.Name}] Debug before-VST file: {debugPath}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{_config.Name}] Failed to create debug file: {ex.Message}");
+            }
+        }
+
+        foreach (var profile in _config.EncodingProfiles)
+        {
+            var outputFile = Path.Combine(_streamOutputDir, $"{profile.Name.ToLowerInvariant().Replace(" ", "_")}.m3u8");
+
+            try
+            {
+                var encoder = _ffmpegService.CreateEncoder(
+                    profile,
+                    outputFile,
+                    _actualSampleRate,
+                    _actualChannels,
+                    _debugAudioEnabled);
+
+                encoder.ErrorDataReceived += (s, msg) => EncoderMessage?.Invoke(this, msg);
+                encoder.ProcessExited += OnEncoderExited;
+
+                _encoders.Add(encoder);
+            }
+            catch (Exception ex)
+            {
+                EncoderMessage?.Invoke(this, $"Failed to create encoder for {profile.Name}: {ex.Message}");
+            }
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[{_config.Name}] Created {_encoders.Count} encoders");
+    }
+
+    private void DestroyEncoders()
+    {
+        // Unsubscribe from events before stopping to avoid callbacks on disposed objects
+        foreach (var encoder in _encoders)
+        {
+            encoder.ProcessExited -= OnEncoderExited;
+        }
+
+        foreach (var encoder in _encoders)
+        {
+            encoder.Stop();
+            encoder.Dispose();
+        }
+        _encoders.Clear();
+
+        // Finalize debug file
+        FinalizeDebugWavFile();
+
+        System.Diagnostics.Debug.WriteLine($"[{_config.Name}] Destroyed encoders");
+    }
+
+    /// <summary>
+    /// Starts encoding (creates FFmpeg processes if using lazy processing).
+    /// Called when first listener connects.
+    /// </summary>
+    public void StartEncoding()
+    {
+        if (_isEncodingActive || !_isRunning) return;
+
+        CreateEncoders();
+        _isEncodingActive = true;
+
+        System.Diagnostics.Debug.WriteLine($"[{_config.Name}] Encoding started (lazy)");
+        EncodingStateChanged?.Invoke(this, true);
+    }
+
+    /// <summary>
+    /// Stops encoding (destroys FFmpeg processes if using lazy processing).
+    /// Called when no listeners remain.
+    /// </summary>
+    public void StopEncoding()
+    {
+        if (!_isEncodingActive) return;
+
+        _isEncodingActive = false;
+
+        if (_lazyProcessing)
+        {
+            // Only destroy encoders if using lazy processing
+            DestroyEncoders();
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[{_config.Name}] Encoding stopped (lazy)");
+        EncodingStateChanged?.Invoke(this, false);
+    }
+
     private void OnAudioDataAvailable(object? sender, AudioDataEventArgs e)
     {
         if (!_isRunning) return;
 
         var inputSamples = e.Buffer;
+
+        // Write raw capture to debug file (before VST)
+        if (_debugBeforeVstStream != null)
+        {
+            var pcmBytes = AudioSampleConverter.FloatToPcm16(inputSamples);
+            try
+            {
+                _debugBeforeVstStream.Write(pcmBytes, 0, pcmBytes.Length);
+                _debugBeforeVstBytes += pcmBytes.Length;
+            }
+            catch { }
+        }
 
         // Update input visualization (copy to avoid reference issues)
         var inputCopy = new float[inputSamples.Length];
@@ -182,35 +318,101 @@ public class AudioStreamProcessor : IDisposable
         _inputVisualizationBuffer.Write(inputCopy);
         InputSamplesAvailable?.Invoke(this, inputCopy);
 
-        // Process through VST chain
-        var processedSamples = inputSamples;
-
-        if (_vstChain.Count > 0)
+        // If no VST plugins, pass through directly
+        if (_vstChain.Count == 0)
         {
-            // Ensure process buffer is large enough
-            if (_processBuffer.Length < inputSamples.Length)
-            {
-                _processBuffer = new float[inputSamples.Length];
-            }
+            SendOutputToConsumers(inputSamples);
+            return;
+        }
+
+        // Add samples to accumulator buffer for block-based VST processing
+        AddToAccumulator(inputSamples);
+
+        // Process complete blocks through VST
+        while (_accumulatorCount >= _vstBlockSamples)
+        {
+            // Read a complete block from accumulator
+            ReadFromAccumulator(_vstInputBuffer, _vstBlockSamples);
+
+            // Calculate RMS of input for debug comparison
+            float inputRms = 0;
+            for (int i = 0; i < _vstInputBuffer.Length; i++)
+                inputRms += _vstInputBuffer[i] * _vstInputBuffer[i];
+            inputRms = (float)Math.Sqrt(inputRms / _vstInputBuffer.Length);
+
+            // Process through VST chain with fixed block size
+            var processedSamples = _vstInputBuffer;
+            var outputBuffer = _vstOutputBuffer;
 
             foreach (var vst in _vstChain)
             {
-                vst.ProcessAudio(processedSamples, _processBuffer, e.Channels);
+                vst.ProcessAudio(processedSamples, outputBuffer, _actualChannels);
 
                 // Swap buffers for next iteration
                 if (_vstChain.IndexOf(vst) < _vstChain.Count - 1)
                 {
-                    (processedSamples, _processBuffer) = (_processBuffer, processedSamples);
+                    (processedSamples, outputBuffer) = (outputBuffer, processedSamples);
                 }
                 else
                 {
-                    processedSamples = _processBuffer;
+                    processedSamples = outputBuffer;
                 }
             }
-        }
 
-        // Send to visualization and encoders
-        SendOutputToConsumers(processedSamples);
+            // Calculate RMS of output for debug comparison
+            float outputRms = 0;
+            for (int i = 0; i < processedSamples.Length; i++)
+                outputRms += processedSamples[i] * processedSamples[i];
+            outputRms = (float)Math.Sqrt(outputRms / processedSamples.Length);
+
+            // Log periodically to show VST is (or isn't) changing audio
+            if (_vstDebugCounter++ % 100 == 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{_config.Name}] VST chain: {_vstChain.Count} plugins, " +
+                    $"bypassed={_vstChain.FirstOrDefault()?.IsBypassed}, " +
+                    $"inputRMS={inputRms:F6}, outputRMS={outputRms:F6}, " +
+                    $"diff={Math.Abs(outputRms - inputRms):F6}");
+            }
+
+            // Send processed block to consumers
+            SendOutputToConsumers(processedSamples);
+        }
+    }
+
+    private int _vstDebugCounter;
+
+    private void AddToAccumulator(float[] samples)
+    {
+        int samplesToWrite = samples.Length;
+        int bufferLength = _accumulatorBuffer.Length;
+
+        for (int i = 0; i < samplesToWrite; i++)
+        {
+            _accumulatorBuffer[_accumulatorWritePos] = samples[i];
+            _accumulatorWritePos = (_accumulatorWritePos + 1) % bufferLength;
+        }
+        _accumulatorCount += samplesToWrite;
+
+        // Prevent overflow - if we're falling behind, drop oldest samples
+        if (_accumulatorCount > bufferLength)
+        {
+            int overflow = _accumulatorCount - bufferLength;
+            _accumulatorReadPos = (_accumulatorReadPos + overflow) % bufferLength;
+            _accumulatorCount = bufferLength;
+            System.Diagnostics.Debug.WriteLine($"[{_config.Name}] VST buffer overflow, dropped {overflow} samples");
+        }
+    }
+
+    private void ReadFromAccumulator(float[] output, int count)
+    {
+        int bufferLength = _accumulatorBuffer.Length;
+
+        for (int i = 0; i < count; i++)
+        {
+            output[i] = _accumulatorBuffer[_accumulatorReadPos];
+            _accumulatorReadPos = (_accumulatorReadPos + 1) % bufferLength;
+        }
+        _accumulatorCount -= count;
     }
 
     private void SendOutputToConsumers(float[] samples)
@@ -220,6 +422,9 @@ public class AudioStreamProcessor : IDisposable
         // Update output visualization
         _outputVisualizationBuffer.Write(samples);
         OutputSamplesAvailable?.Invoke(this, samples);
+
+        // Only send to encoders if encoding is active
+        if (!_isEncodingActive) return;
 
         // Convert to PCM16 and send to encoders
         var pcmBytes = AudioSampleConverter.FloatToPcm16(samples);
@@ -232,10 +437,20 @@ public class AudioStreamProcessor : IDisposable
 
     private void OnEncoderExited(object? sender, EventArgs e)
     {
-        // Check if all encoders have stopped
-        if (_encoders.All(enc => !enc.IsRunning))
+        // Skip if we're already stopping or encoders are being destroyed
+        if (!_isRunning || !_isEncodingActive || _encoders.Count == 0) return;
+
+        try
         {
-            Stop();
+            // Check if all encoders have stopped
+            if (_encoders.All(enc => !enc.IsRunning))
+            {
+                Stop();
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // Encoder was disposed while checking, ignore
         }
     }
 
@@ -262,12 +477,62 @@ public class AudioStreamProcessor : IDisposable
         _isRunning = false;
         _capture.StopCapture();
 
+        // Finalize debug WAV file
+        FinalizeDebugWavFile();
+
         foreach (var encoder in _encoders)
         {
             encoder.Stop();
         }
 
         Stopped?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void FinalizeDebugWavFile()
+    {
+        if (_debugBeforeVstStream == null) return;
+
+        try
+        {
+            // Seek back and update WAV header with correct size
+            _debugBeforeVstStream.Seek(0, SeekOrigin.Begin);
+            WriteWavHeader(_debugBeforeVstStream, _actualSampleRate, _actualChannels, (int)_debugBeforeVstBytes);
+            _debugBeforeVstStream.Close();
+            _debugBeforeVstStream.Dispose();
+            _debugBeforeVstStream = null;
+            System.Diagnostics.Debug.WriteLine($"[{_config.Name}] Debug before-VST file finalized: {_debugBeforeVstBytes} bytes");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[{_config.Name}] Failed to finalize debug WAV: {ex.Message}");
+        }
+    }
+
+    private static void WriteWavHeader(Stream stream, int sampleRate, int channels, int dataSize)
+    {
+        using var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true);
+        int bitsPerSample = 16;
+        int byteRate = sampleRate * channels * bitsPerSample / 8;
+        short blockAlign = (short)(channels * bitsPerSample / 8);
+
+        // RIFF header
+        writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF"));
+        writer.Write(36 + dataSize); // File size - 8
+        writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVE"));
+
+        // fmt subchunk
+        writer.Write(System.Text.Encoding.ASCII.GetBytes("fmt "));
+        writer.Write(16); // Subchunk1Size (16 for PCM)
+        writer.Write((short)1); // AudioFormat (1 = PCM)
+        writer.Write((short)channels);
+        writer.Write(sampleRate);
+        writer.Write(byteRate);
+        writer.Write(blockAlign);
+        writer.Write((short)bitsPerSample);
+
+        // data subchunk
+        writer.Write(System.Text.Encoding.ASCII.GetBytes("data"));
+        writer.Write(dataSize);
     }
 
     public float[] GetLatestInputSamples(int count)
