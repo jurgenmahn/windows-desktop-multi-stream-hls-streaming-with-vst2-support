@@ -22,6 +22,8 @@ public class AudioStreamProcessor : IDisposable
     private readonly string _streamOutputDir;
     private readonly bool _debugAudioEnabled;
     private readonly bool _lazyProcessing;
+    private readonly int _hlsSegmentDuration;
+    private readonly int _hlsPlaylistSize;
     private FileStream? _debugBeforeVstStream;
     private long _debugBeforeVstBytes;
     private float[] _processBuffer;
@@ -58,12 +60,16 @@ public class AudioStreamProcessor : IDisposable
         IFfmpegService ffmpegService,
         string hlsOutputDirectory,
         bool debugAudioEnabled = false,
-        bool lazyProcessing = false)
+        bool lazyProcessing = false,
+        int hlsSegmentDuration = 4,
+        int hlsPlaylistSize = 5)
     {
         _config = config;
         _blockSize = config.AudioInput.BufferSize;
         _debugAudioEnabled = debugAudioEnabled;
         _lazyProcessing = lazyProcessing;
+        _hlsSegmentDuration = hlsSegmentDuration;
+        _hlsPlaylistSize = hlsPlaylistSize;
         _ffmpegService = ffmpegService;
 
         // Create audio capture based on driver type
@@ -248,6 +254,8 @@ public class AudioStreamProcessor : IDisposable
                     outputFile,
                     _actualSampleRate,
                     _actualChannels,
+                    _hlsSegmentDuration,
+                    _hlsPlaylistSize,
                     _config.StreamFormat,
                     _config.ContainerFormat,
                     _debugAudioEnabled);

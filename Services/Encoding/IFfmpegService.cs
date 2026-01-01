@@ -9,6 +9,8 @@ public interface IFfmpegService
         string outputPath,
         int inputSampleRate,
         int inputChannels,
+        int hlsSegmentDuration,
+        int hlsPlaylistSize,
         StreamFormat streamFormat = StreamFormat.Hls,
         ContainerFormat containerFormat = ContainerFormat.MpegTs,
         bool debugAudioEnabled = false);

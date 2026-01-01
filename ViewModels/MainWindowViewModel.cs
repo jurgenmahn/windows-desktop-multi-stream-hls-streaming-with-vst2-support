@@ -85,6 +85,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                     _config.StreamsPagePath = savedConfig.StreamsPagePath;
                     _config.DebugAudioEnabled = savedConfig.DebugAudioEnabled;
                     _config.MonitorOutputDevice = savedConfig.MonitorOutputDevice;
+                    _config.HlsSegmentDuration = savedConfig.HlsSegmentDuration;
+                    _config.HlsPlaylistSize = savedConfig.HlsPlaylistSize;
                 }
             }
             catch (Exception ex)
@@ -300,6 +302,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 _config.StreamsPagePath = dialog.ResultConfiguration.StreamsPagePath;
                 _config.DebugAudioEnabled = dialog.ResultConfiguration.DebugAudioEnabled;
                 _config.MonitorOutputDevice = dialog.ResultConfiguration.MonitorOutputDevice;
+                _config.HlsSegmentDuration = dialog.ResultConfiguration.HlsSegmentDuration;
+                _config.HlsPlaylistSize = dialog.ResultConfiguration.HlsPlaylistSize;
                 SaveAppConfig();
 
                 // Update monitor output device immediately

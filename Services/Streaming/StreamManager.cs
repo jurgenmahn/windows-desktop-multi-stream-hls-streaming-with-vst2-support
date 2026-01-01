@@ -65,7 +65,9 @@ public class StreamManager : IStreamManager
                 _ffmpegService,
                 hlsOutputDir,
                 _config.DebugAudioEnabled,
-                _config.LazyProcessing);
+                _config.LazyProcessing,
+                _config.HlsSegmentDuration,
+                _config.HlsPlaylistSize);
 
             processor.Stopped += (s, e) => OnStreamStopped(config.Id, config.Name);
 

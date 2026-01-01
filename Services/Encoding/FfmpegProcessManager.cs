@@ -171,11 +171,13 @@ public class FfmpegProcessManager : IDisposable
 
         // -y: overwrite output files without asking
         // -thread_queue_size: buffer input to handle irregular data delivery
-        // -af aresample=async=1: fix timing discontinuities by stretching/compressing audio
+        // -fflags +genpts: generate clean presentation timestamps
+        // -af asetpts: assign sequential timestamps based on sample count for gapless playback
         var args = $"-y -hide_banner -loglevel warning " +
+                   $"-fflags +genpts " +
                    $"-thread_queue_size 4096 " +
                    $"-f s16le -ar {inputSampleRate} -ac {inputChannels} -i - " +
-                   $"-af aresample=async=1:first_pts=0 " +
+                   $"-af asetpts=N/SR/TB " +
                    $"-c:a {codec} -b:a {bitrateK}k ";
 
         // Add codec-specific options

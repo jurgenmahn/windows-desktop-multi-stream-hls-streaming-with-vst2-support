@@ -228,7 +228,7 @@
   "LazyProcessing": true,
   "StreamsPagePath": "/streams",
   "DebugAudioEnabled": false,
-  "HlsSegmentDuration": 4,
+  "HlsSegmentDuration": 2,
   "HlsPlaylistSize": 5,
   "MonitorOutputDevice": "Speaker (Realtek(R) Audio)"
 }
