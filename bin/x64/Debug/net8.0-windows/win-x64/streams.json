@@ -167,7 +167,7 @@
     "ContainerFormat": 1
   },
   {
-    "Id": "2e8d2b1b-58aa-4b96-9a31-71a57055b014",
+    "Id": "6756210f-40bd-4bf2-bfd8-ea432c87a27c",
     "Name": "Stream 4",
     "AudioInput": {
       "DriverType": 0,
@@ -183,30 +183,30 @@
         "PluginName": "Stereo Tool",
         "Order": 0,
         "IsBypassed": false,
-        "PresetFilePath": "C:\\Users\\jurge\\Downloads\\Impact MX Edit by Krokodil V2.1.sts",
+        "PresetFilePath": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\bin\\x64\\Debug\\net8.0-windows\\win-x64\\Presets\\Impact MX Edit by Krokodil V2.1.sts",
         "PresetData": null
       }
     ],
     "EncodingProfiles": [
       {
-        "Name": "64kbps AAC",
-        "Codec": 0,
+        "Name": "64kbps Opus",
+        "Codec": 2,
         "Bitrate": 64000,
         "SampleRate": 48000,
         "SegmentDuration": 4,
         "PlaylistSize": 5
       },
       {
-        "Name": "128kbps AAC",
-        "Codec": 0,
+        "Name": "128kbps Opus",
+        "Codec": 2,
         "Bitrate": 128000,
         "SampleRate": 48000,
         "SegmentDuration": 4,
         "PlaylistSize": 5
       },
       {
-        "Name": "192kbps AAC",
-        "Codec": 0,
+        "Name": "192kbps Opus",
+        "Codec": 2,
         "Bitrate": 192000,
         "SampleRate": 48000,
         "SegmentDuration": 4,
@@ -216,104 +216,7 @@
     "StreamPath": "stream4",
     "LogoPath": null,
     "IsEnabled": true,
-    "StreamFormat": 1,
+    "StreamFormat": 0,
     "ContainerFormat": 1
-  },
-  {
-    "Id": "a55de8a6-162c-4be2-9f8a-2ffc73853c90",
-    "Name": "Stream 5",
-    "AudioInput": {
-      "DriverType": 0,
-      "DeviceId": "{0.0.0.00000000}.{07056454-d31e-4815-a9fc-abb534dea355}",
-      "DeviceName": "Headphones (SteelSeries Arctis 9 Game) (Loopback)",
-      "SampleRate": 48000,
-      "Channels": 2,
-      "BufferSize": 1024
-    },
-    "VstPlugins": [
-      {
-        "PluginPath": "Plugins/vst_stereo_tool_64.dll",
-        "PluginName": "Stereo Tool",
-        "Order": 0,
-        "IsBypassed": false,
-        "PresetFilePath": "C:\\Users\\jurge\\Downloads\\Raf_Del_Pizzo - MODERN SMOOTH_v5 - 2025-06-27.sts",
-        "PresetData": null
-      }
-    ],
-    "EncodingProfiles": [
-      {
-        "Name": "64kbps AAC",
-        "Codec": 0,
-        "Bitrate": 64000,
-        "SampleRate": 48000,
-        "SegmentDuration": 4,
-        "PlaylistSize": 5
-      },
-      {
-        "Name": "128kbps AAC",
-        "Codec": 0,
-        "Bitrate": 128000,
-        "SampleRate": 48000,
-        "SegmentDuration": 4,
-        "PlaylistSize": 5
-      },
-      {
-        "Name": "192kbps AAC",
-        "Codec": 0,
-        "Bitrate": 192000,
-        "SampleRate": 48000,
-        "SegmentDuration": 4,
-        "PlaylistSize": 5
-      }
-    ],
-    "StreamPath": "stream5",
-    "LogoPath": null,
-    "IsEnabled": true,
-    "StreamFormat": 0,
-    "ContainerFormat": 0
-  },
-  {
-    "Id": "5f8a999b-8a4e-4caa-abd1-4d7f68d11d76",
-    "Name": "Stream 6",
-    "AudioInput": {
-      "DriverType": 0,
-      "DeviceId": "{0.0.0.00000000}.{07056454-d31e-4815-a9fc-abb534dea355}",
-      "DeviceName": "Headphones (SteelSeries Arctis 9 Game) (Loopback)",
-      "SampleRate": 48000,
-      "Channels": 2,
-      "BufferSize": 1024
-    },
-    "VstPlugins": [],
-    "EncodingProfiles": [
-      {
-        "Name": "64kbps AAC",
-        "Codec": 0,
-        "Bitrate": 64000,
-        "SampleRate": 48000,
-        "SegmentDuration": 4,
-        "PlaylistSize": 5
-      },
-      {
-        "Name": "128kbps AAC",
-        "Codec": 0,
-        "Bitrate": 128000,
-        "SampleRate": 48000,
-        "SegmentDuration": 4,
-        "PlaylistSize": 5
-      },
-      {
-        "Name": "192kbps AAC",
-        "Codec": 0,
-        "Bitrate": 192000,
-        "SampleRate": 48000,
-        "SegmentDuration": 4,
-        "PlaylistSize": 5
-      }
-    ],
-    "StreamPath": "stream6",
-    "LogoPath": null,
-    "IsEnabled": true,
-    "StreamFormat": 0,
-    "ContainerFormat": 0
   }
 ]

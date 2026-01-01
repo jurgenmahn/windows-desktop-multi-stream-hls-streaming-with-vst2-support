@@ -74,12 +74,16 @@ public class FfmpegProcessManager : IDisposable
             }
         }
 
+        // Set working directory to output folder so init files are created there
+        var outputDir = Path.GetDirectoryName(outputPath)!;
+
         _ffmpegProcess = new Process
         {
             StartInfo = new ProcessStartInfo
             {
                 FileName = ffmpegPath,
                 Arguments = arguments,
+                WorkingDirectory = outputDir,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardInput = true,
@@ -93,6 +97,7 @@ public class FfmpegProcessManager : IDisposable
         {
             if (!string.IsNullOrEmpty(e.Data))
             {
+                System.Diagnostics.Debug.WriteLine($"[FFmpeg {profile.Name}] {e.Data}");
                 ErrorDataReceived?.Invoke(this, e.Data);
             }
         };
@@ -222,14 +227,10 @@ public class FfmpegProcessManager : IDisposable
             {
                 // HLS with fMP4 segments
                 segmentExtension = "m4s";
-                // fMP4 requires specific options for fragmented output
-                // -movflags: frag_keyframe creates fragments at keyframes, empty_moov creates init segment upfront
-                // -hls_fmp4_init_resend: ensures init data is available
-                hlsSegmentType = "-movflags +frag_keyframe+empty_moov+default_base_moof " +
-                                 "-hls_segment_type fmp4 ";
-                // fMP4 requires init segment
+                // fMP4 init segment filename (relative to playlist directory)
                 var initFilename = $"{profileBaseName}_init.mp4";
-                hlsSegmentType += $"-hls_fmp4_init_filename \"{initFilename}\" ";
+                hlsSegmentType = $"-hls_segment_type fmp4 " +
+                                 $"-hls_fmp4_init_filename \"{initFilename}\" ";
             }
             else
             {

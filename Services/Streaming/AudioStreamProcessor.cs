@@ -209,6 +209,9 @@ public class AudioStreamProcessor : IDisposable
     {
         if (_encoders.Count > 0) return; // Already created
 
+        // Clean up any leftover files from previous runs before starting
+        CleanupStreamOutputFolder();
+
         // Create debug WAV file for raw capture (before VST)
         if (_debugAudioEnabled)
         {
@@ -484,7 +487,54 @@ public class AudioStreamProcessor : IDisposable
             encoder.Stop();
         }
 
+        // Clean up stream output folder (remove old segments/playlists but keep debug files)
+        CleanupStreamOutputFolder();
+
         Stopped?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void CleanupStreamOutputFolder()
+    {
+        if (string.IsNullOrEmpty(_streamOutputDir) || !Directory.Exists(_streamOutputDir))
+            return;
+
+        try
+        {
+            var filesToDelete = Directory.GetFiles(_streamOutputDir)
+                .Where(f =>
+                {
+                    var fileName = Path.GetFileName(f).ToLowerInvariant();
+                    // Keep debug WAV files
+                    if (fileName.StartsWith("debug_") && fileName.EndsWith(".wav"))
+                        return false;
+                    // Delete segments, playlists, manifests, init files
+                    var ext = Path.GetExtension(f).ToLowerInvariant();
+                    return ext == ".ts" || ext == ".m4s" || ext == ".mp4" ||
+                           ext == ".m3u8" || ext == ".mpd";
+                })
+                .ToList();
+
+            foreach (var file in filesToDelete)
+            {
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[{_config.Name}] Failed to delete {Path.GetFileName(file)}: {ex.Message}");
+                }
+            }
+
+            if (filesToDelete.Count > 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{_config.Name}] Cleaned up {filesToDelete.Count} stream files");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[{_config.Name}] Failed to cleanup stream folder: {ex.Message}");
+        }
     }
 
     private void FinalizeDebugWavFile()

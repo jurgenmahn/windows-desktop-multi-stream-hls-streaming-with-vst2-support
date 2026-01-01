@@ -83,7 +83,8 @@
 
                 <ListBox Grid.Row="1" ItemsSource="{Binding Streams}"
                          SelectedItem="{Binding SelectedStream}"
-                         Background="Transparent" BorderThickness="0">
+                         Background="Transparent" BorderThickness="0"
+                         SelectionChanged="StreamsList_SelectionChanged">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Name}" Foreground="#333333" Padding="4"/>

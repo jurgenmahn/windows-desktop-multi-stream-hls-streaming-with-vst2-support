@@ -116,7 +116,7 @@
       "LogoPath": "C:\\Users\\jurge\\Downloads\\www.9yards.nl_en_.png",
       "IsEnabled": true,
       "StreamFormat": 0,
-      "ContainerFormat": 0
+      "ContainerFormat": 1
     },
     {
       "Id": "3da32dd0-78a8-4fb8-89f5-839b0d6d1241",
@@ -168,8 +168,8 @@
       "StreamPath": "stream3",
       "LogoPath": "C:\\Users\\jurge\\Downloads\\www.9yards.nl_en_.png",
       "IsEnabled": true,
-      "StreamFormat": 0,
-      "ContainerFormat": 0
+      "StreamFormat": 1,
+      "ContainerFormat": 1
     },
     {
       "Id": "2e8d2b1b-58aa-4b96-9a31-71a57055b014",
@@ -221,8 +221,8 @@
       "StreamPath": "stream4",
       "LogoPath": null,
       "IsEnabled": true,
-      "StreamFormat": 0,
-      "ContainerFormat": 0
+      "StreamFormat": 1,
+      "ContainerFormat": 1
     },
     {
       "Id": "a55de8a6-162c-4be2-9f8a-2ffc73853c90",

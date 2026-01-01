@@ -25,6 +25,21 @@ public partial class ConfigurationDialog : Window
     public void LoadConfiguration(AppConfiguration config, IEnumerable<StreamConfiguration> streams)
     {
         _viewModel.LoadConfiguration(config, streams);
+        UpdateContainerFormatOptions();
+    }
+
+    private void UpdateContainerFormatOptions()
+    {
+        // Enable/disable MPEG-TS option based on current stream format
+        if (_viewModel.SelectedStream != null)
+        {
+            MpegTsOption.IsEnabled = _viewModel.SelectedStream.StreamFormat != StreamFormat.Dash;
+        }
+    }
+
+    private void StreamsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateContainerFormatOptions();
     }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
@@ -53,19 +68,16 @@ public partial class ConfigurationDialog : Window
     {
         if (_suppressFormatEvents || _viewModel.SelectedStream == null) return;
 
-        // When DASH is selected, auto-select fMP4 (DASH requires fMP4) and disable MPEG-TS option
+        // When DASH is selected, auto-select fMP4 (DASH requires fMP4)
         if (_viewModel.SelectedStream.StreamFormat == StreamFormat.Dash)
         {
             _suppressFormatEvents = true;
             _viewModel.SelectedStream.ContainerFormat = ContainerFormat.Fmp4;
-            MpegTsOption.IsEnabled = false;
             _suppressFormatEvents = false;
         }
-        else
-        {
-            // HLS supports both container formats
-            MpegTsOption.IsEnabled = true;
-        }
+
+        // Update container format options (enable/disable MPEG-TS based on stream format)
+        UpdateContainerFormatOptions();
     }
 
     private void ContainerFormat_SelectionChanged(object sender, SelectionChangedEventArgs e)
