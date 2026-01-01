@@ -208,6 +208,47 @@ public class HlsWebServer : IAsyncDisposable
             await next();
         });
 
+        // Middleware to wait for segment files when lazy loading (files may not exist immediately)
+        _app.Use(async (context, next) =>
+        {
+            var path = context.Request.Path.Value ?? "";
+
+            // Only handle HLS/DASH file requests
+            if (path.StartsWith("/hls/") && (
+                path.EndsWith(".ts") || path.EndsWith(".m4s") || path.EndsWith(".mp4") ||
+                path.EndsWith(".m3u8") || path.EndsWith(".mpd")))
+            {
+                // Convert URL path to file system path
+                var relativePath = path.Substring("/hls/".Length);
+                var filePath = Path.Combine(_hlsDirectory, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+                // If file doesn't exist, wait for it (lazy loading support)
+                if (!File.Exists(filePath))
+                {
+                    const int maxWaitMs = 15000;  // Max 15 seconds wait
+                    const int pollIntervalMs = 100;  // Check every 100ms
+                    var elapsed = 0;
+
+                    while (!File.Exists(filePath) && elapsed < maxWaitMs)
+                    {
+                        await Task.Delay(pollIntervalMs);
+                        elapsed += pollIntervalMs;
+                    }
+
+                    // If still doesn't exist after waiting, return 503 Service Unavailable
+                    if (!File.Exists(filePath))
+                    {
+                        context.Response.StatusCode = 503;
+                        context.Response.Headers.Append("Retry-After", "2");
+                        await context.Response.WriteAsync("Stream is starting, please retry...");
+                        return;
+                    }
+                }
+            }
+
+            await next();
+        });
+
         // Serve HLS files with custom content types
         _app.UseStaticFiles(new StaticFileOptions
         {
@@ -347,6 +388,8 @@ public class HlsWebServer : IAsyncDisposable
         sb.AppendLine("    .stream-name { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 4px; }");
         sb.AppendLine("    .stream-profiles { font-size: 12px; color: #666; }");
         sb.AppendLine("    .profile-badge { display: inline-block; background: #e3f2fd; color: #1976d2; padding: 2px 8px; border-radius: 4px; margin-right: 4px; margin-top: 4px; }");
+        sb.AppendLine("    .format-badge { display: inline-block; background: #fff3e0; color: #e65100; padding: 2px 8px; border-radius: 4px; margin-right: 4px; margin-top: 4px; font-weight: 500; }");
+        sb.AppendLine("    .container-badge { display: inline-block; background: #f3e5f5; color: #7b1fa2; padding: 2px 8px; border-radius: 4px; margin-right: 4px; margin-top: 4px; }");
         sb.AppendLine("    .stream-actions { display: flex; gap: 8px; flex-shrink: 0; }");
         sb.AppendLine("    .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; transition: background 0.2s; }");
         sb.AppendLine("    .btn-play { background: #0078d4; color: white; }");
@@ -396,12 +439,18 @@ public class HlsWebServer : IAsyncDisposable
                 ? $"<img src=\"data:image/png;base64,{Convert.ToBase64String(File.ReadAllBytes(stream.LogoPath))}\" alt=\"{System.Net.WebUtility.HtmlEncode(stream.Name)}\">"
                 : "&#9835;";
 
+            // Format labels for display
+            var streamFormatLabel = isDash ? "DASH" : "HLS";
+            var containerFormatLabel = stream.ContainerFormat == ContainerFormat.Fmp4 ? "fMP4" : "MPEG-TS";
+
             sb.AppendLine($"    <div class=\"stream\" data-url=\"{streamUrl}\" data-format=\"{formatType}\" data-index=\"{streamIndex}\">");
             sb.AppendLine($"      <div class=\"stream-header\">");
             sb.AppendLine($"        <div class=\"stream-logo\">{logoHtml}</div>");
             sb.AppendLine($"        <div class=\"stream-info\">");
             sb.AppendLine($"          <div class=\"stream-name\">{System.Net.WebUtility.HtmlEncode(stream.Name)}</div>");
             sb.AppendLine($"          <div class=\"stream-profiles\">");
+            sb.AppendLine($"            <span class=\"format-badge\">{streamFormatLabel}</span>");
+            sb.AppendLine($"            <span class=\"container-badge\">{containerFormatLabel}</span>");
 
             foreach (var profile in stream.EncodingProfiles)
             {

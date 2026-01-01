@@ -53,12 +53,18 @@ public partial class ConfigurationDialog : Window
     {
         if (_suppressFormatEvents || _viewModel.SelectedStream == null) return;
 
-        // When DASH is selected, auto-select fMP4 (DASH requires fMP4)
+        // When DASH is selected, auto-select fMP4 (DASH requires fMP4) and disable MPEG-TS option
         if (_viewModel.SelectedStream.StreamFormat == StreamFormat.Dash)
         {
             _suppressFormatEvents = true;
             _viewModel.SelectedStream.ContainerFormat = ContainerFormat.Fmp4;
+            MpegTsOption.IsEnabled = false;
             _suppressFormatEvents = false;
+        }
+        else
+        {
+            // HLS supports both container formats
+            MpegTsOption.IsEnabled = true;
         }
     }
 
@@ -75,5 +81,33 @@ public partial class ConfigurationDialog : Window
             _viewModel.SelectedStream.StreamFormat = StreamFormat.Hls;
             _suppressFormatEvents = false;
         }
+    }
+
+    private void SegmentDuration_LostFocus(object sender, RoutedEventArgs e)
+    {
+        // Validate and clamp segment duration to valid range (1-30 seconds)
+        if (int.TryParse(SegmentDurationTextBox.Text, out int value))
+        {
+            _viewModel.HlsSegmentDuration = Math.Clamp(value, 1, 30);
+        }
+        else
+        {
+            _viewModel.HlsSegmentDuration = 4; // Default value
+        }
+        SegmentDurationTextBox.Text = _viewModel.HlsSegmentDuration.ToString();
+    }
+
+    private void PlaylistSize_LostFocus(object sender, RoutedEventArgs e)
+    {
+        // Validate and clamp playlist size to valid range (2-30 segments)
+        if (int.TryParse(PlaylistSizeTextBox.Text, out int value))
+        {
+            _viewModel.HlsPlaylistSize = Math.Clamp(value, 2, 30);
+        }
+        else
+        {
+            _viewModel.HlsPlaylistSize = 5; // Default value
+        }
+        PlaylistSizeTextBox.Text = _viewModel.HlsPlaylistSize.ToString();
     }
 }

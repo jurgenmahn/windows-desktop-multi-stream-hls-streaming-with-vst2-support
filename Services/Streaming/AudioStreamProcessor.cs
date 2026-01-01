@@ -356,12 +356,6 @@ public class AudioStreamProcessor : IDisposable
             // Read a complete block from accumulator
             ReadFromAccumulator(_vstInputBuffer, _vstBlockSamples);
 
-            // Calculate RMS of input for debug comparison
-            float inputRms = 0;
-            for (int i = 0; i < _vstInputBuffer.Length; i++)
-                inputRms += _vstInputBuffer[i] * _vstInputBuffer[i];
-            inputRms = (float)Math.Sqrt(inputRms / _vstInputBuffer.Length);
-
             // Process through VST chain with fixed block size
             var processedSamples = _vstInputBuffer;
             var outputBuffer = _vstOutputBuffer;
@@ -381,27 +375,10 @@ public class AudioStreamProcessor : IDisposable
                 }
             }
 
-            // Calculate RMS of output for debug comparison
-            float outputRms = 0;
-            for (int i = 0; i < processedSamples.Length; i++)
-                outputRms += processedSamples[i] * processedSamples[i];
-            outputRms = (float)Math.Sqrt(outputRms / processedSamples.Length);
-
-            // Log periodically to show VST is (or isn't) changing audio
-            if (_vstDebugCounter++ % 100 == 0)
-            {
-                System.Diagnostics.Debug.WriteLine($"[{_config.Name}] VST chain: {_vstChain.Count} plugins, " +
-                    $"bypassed={_vstChain.FirstOrDefault()?.IsBypassed}, " +
-                    $"inputRMS={inputRms:F6}, outputRMS={outputRms:F6}, " +
-                    $"diff={Math.Abs(outputRms - inputRms):F6}");
-            }
-
             // Send processed block to consumers
             SendOutputToConsumers(processedSamples);
         }
     }
-
-    private int _vstDebugCounter;
 
     private void AddToAccumulator(float[] samples)
     {

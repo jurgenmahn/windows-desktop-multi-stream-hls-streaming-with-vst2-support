@@ -222,10 +222,14 @@ public class FfmpegProcessManager : IDisposable
             {
                 // HLS with fMP4 segments
                 segmentExtension = "m4s";
-                hlsSegmentType = "-hls_segment_type fmp4 ";
+                // fMP4 requires specific options for fragmented output
+                // -movflags: frag_keyframe creates fragments at keyframes, empty_moov creates init segment upfront
+                // -hls_fmp4_init_resend: ensures init data is available
+                hlsSegmentType = "-movflags +frag_keyframe+empty_moov+default_base_moof " +
+                                 "-hls_segment_type fmp4 ";
                 // fMP4 requires init segment
-                var initPath = Path.Combine(outputDir, $"{profileBaseName}_init.mp4");
-                hlsSegmentType += $"-hls_fmp4_init_filename \"{Path.GetFileName(initPath)}\" ";
+                var initFilename = $"{profileBaseName}_init.mp4";
+                hlsSegmentType += $"-hls_fmp4_init_filename \"{initFilename}\" ";
             }
             else
             {
@@ -250,8 +254,9 @@ public class FfmpegProcessManager : IDisposable
         {
             var debugOutputPath = Path.Combine(outputDir, "debug_output.wav");
             args += $" -c:a pcm_s16le \"{debugOutputPath}\"";
-            System.Diagnostics.Debug.WriteLine($"[FFmpeg] Debug output file: {debugOutputPath}");
         }
+
+        System.Diagnostics.Debug.WriteLine($"[FFmpeg] Command: ffmpeg {args}");
 
         return args;
     }

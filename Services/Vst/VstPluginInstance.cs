@@ -80,17 +80,10 @@ public class VstPluginInstance : IDisposable
         }
     }
 
-    private static int _processDebugCounter;
-
     public unsafe void ProcessAudio(float[] interleavedInput, float[] interleavedOutput, int channels)
     {
         if (IsBypassed || _inputChannelBuffers == null || _outputChannelBuffers == null)
         {
-            if (_processDebugCounter++ % 500 == 0)
-            {
-                System.Diagnostics.Debug.WriteLine($"[VST {PluginName}] BYPASSED: IsBypassed={IsBypassed}, " +
-                    $"inputBuffers={_inputChannelBuffers != null}, outputBuffers={_outputChannelBuffers != null}");
-            }
             Array.Copy(interleavedInput, interleavedOutput, Math.Min(interleavedInput.Length, interleavedOutput.Length));
             return;
         }
@@ -147,17 +140,6 @@ public class VstPluginInstance : IDisposable
                 // Process through VST plugin
                 _context.PluginCommandStub.Commands.ProcessReplacing(inputBuffers, outputBuffers);
 
-                // Debug: check if VST modified the audio
-                if (_processDebugCounter++ % 500 == 0)
-                {
-                    float inSum = 0, outSum = 0;
-                    for (int i = 0; i < Math.Min(100, samplesPerChannel); i++)
-                    {
-                        inSum += Math.Abs(_inputChannelBuffers[0][i]);
-                        outSum += Math.Abs(_outputChannelBuffers[0][i]);
-                    }
-                    System.Diagnostics.Debug.WriteLine($"[VST {PluginName}] ProcessReplacing: inSum={inSum:F4}, outSum={outSum:F4}");
-                }
             }
             finally
             {

@@ -122,7 +122,7 @@
                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
                         <TextBlock Text="Stream Format" FontWeight="SemiBold" Margin="0,0,0,2"/>
                         <TextBlock Text="Protocol for streaming (HLS or DASH)" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
-                        <ComboBox SelectedValue="{Binding SelectedStream.StreamFormat}"
+                        <ComboBox SelectedValue="{Binding SelectedStream.StreamFormat, Mode=TwoWay}"
                                   SelectedValuePath="Tag"
                                   SelectionChanged="StreamFormat_SelectionChanged">
                             <ComboBoxItem Content="HLS (HTTP Live Streaming)" Tag="{x:Static models:StreamFormat.Hls}"/>
@@ -134,10 +134,10 @@
                         <TextBlock Text="Container Format" FontWeight="SemiBold" Margin="0,0,0,2"/>
                         <TextBlock Text="Segment format (DASH requires fMP4)" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
                         <ComboBox x:Name="ContainerFormatComboBox"
-                                  SelectedValue="{Binding SelectedStream.ContainerFormat}"
+                                  SelectedValue="{Binding SelectedStream.ContainerFormat, Mode=TwoWay}"
                                   SelectedValuePath="Tag"
                                   SelectionChanged="ContainerFormat_SelectionChanged">
-                            <ComboBoxItem Content="MPEG-TS (.ts segments)" Tag="{x:Static models:ContainerFormat.MpegTs}"/>
+                            <ComboBoxItem x:Name="MpegTsOption" Content="MPEG-TS (.ts segments)" Tag="{x:Static models:ContainerFormat.MpegTs}"/>
                             <ComboBoxItem Content="fMP4 (.m4s segments)" Tag="{x:Static models:ContainerFormat.Fmp4}"/>
                         </ComboBox>
                     </StackPanel>
@@ -356,6 +356,33 @@
                                     <Button Grid.Column="1" Content="Browse..." Style="{StaticResource SmallButton}"
                                             Command="{Binding BrowseHlsOutputDirectoryCommand}"/>
                                 </Grid>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Segment Settings Row -->
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Segment Duration (seconds)" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                                <TextBlock Text="Duration of each HLS/DASH segment (1-30)" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
+                                <TextBox x:Name="SegmentDurationTextBox"
+                                         Text="{Binding HlsSegmentDuration, UpdateSourceTrigger=PropertyChanged}"
+                                         PreviewTextInput="NumericTextBox_PreviewTextInput"
+                                         LostFocus="SegmentDuration_LostFocus"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                <TextBlock Text="Playlist Size (segments)" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                                <TextBlock Text="Number of segments in playlist file (2-30)" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
+                                <TextBox x:Name="PlaylistSizeTextBox"
+                                         Text="{Binding HlsPlaylistSize, UpdateSourceTrigger=PropertyChanged}"
+                                         PreviewTextInput="NumericTextBox_PreviewTextInput"
+                                         LostFocus="PlaylistSize_LostFocus"/>
                             </StackPanel>
                         </Grid>
 

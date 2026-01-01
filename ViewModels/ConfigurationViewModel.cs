@@ -49,6 +49,12 @@ public partial class ConfigurationViewModel : ObservableObject
     [ObservableProperty]
     private bool _debugAudioEnabled = false;
 
+    [ObservableProperty]
+    private int _hlsSegmentDuration = 4;
+
+    [ObservableProperty]
+    private int _hlsPlaylistSize = 5;
+
     public bool HasChanges { get; private set; }
 
     public ConfigurationViewModel()
@@ -67,6 +73,8 @@ public partial class ConfigurationViewModel : ObservableObject
         StreamsPagePath = config.StreamsPagePath;
         DebugAudioEnabled = config.DebugAudioEnabled;
         MonitorOutputDevice = config.MonitorOutputDevice;
+        HlsSegmentDuration = config.HlsSegmentDuration;
+        HlsPlaylistSize = config.HlsPlaylistSize;
 
         Streams.Clear();
         foreach (var stream in streamConfigs)
@@ -92,7 +100,9 @@ public partial class ConfigurationViewModel : ObservableObject
             LazyProcessing = LazyProcessing,
             StreamsPagePath = StreamsPagePath,
             DebugAudioEnabled = DebugAudioEnabled,
-            MonitorOutputDevice = MonitorOutputDevice
+            MonitorOutputDevice = MonitorOutputDevice,
+            HlsSegmentDuration = HlsSegmentDuration,
+            HlsPlaylistSize = HlsPlaylistSize
         };
 
         return (config, Streams.ToList());
@@ -377,6 +387,8 @@ public partial class ConfigurationViewModel : ObservableObject
             StreamPath = source.StreamPath,
             LogoPath = source.LogoPath,
             IsEnabled = source.IsEnabled,
+            StreamFormat = source.StreamFormat,
+            ContainerFormat = source.ContainerFormat,
             AudioInput = new AudioInputConfig
             {
                 DriverType = source.AudioInput.DriverType,

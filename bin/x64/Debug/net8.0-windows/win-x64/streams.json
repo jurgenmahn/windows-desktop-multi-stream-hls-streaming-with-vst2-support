@@ -46,9 +46,9 @@
         "PlaylistSize": 5
       },
       {
-        "Name": "320kbps MP3",
-        "Codec": 1,
-        "Bitrate": 320000,
+        "Name": "128kbs Opus",
+        "Codec": 2,
+        "Bitrate": 128000,
         "SampleRate": 48000,
         "SegmentDuration": 4,
         "PlaylistSize": 5
@@ -58,7 +58,7 @@
     "LogoPath": "C:\\Users\\jurge\\Downloads\\www.9yards.nl_en_.png",
     "IsEnabled": true,
     "StreamFormat": 0,
-    "ContainerFormat": 1
+    "ContainerFormat": 0
   },
   {
     "Id": "c554c147-0aff-4460-9c80-bfad174fd7bd",
@@ -110,7 +110,7 @@
     "StreamPath": "stream2",
     "LogoPath": "C:\\Users\\jurge\\Downloads\\www.9yards.nl_en_.png",
     "IsEnabled": true,
-    "StreamFormat": 1,
+    "StreamFormat": 0,
     "ContainerFormat": 1
   },
   {
@@ -163,8 +163,8 @@
     "StreamPath": "stream3",
     "LogoPath": "C:\\Users\\jurge\\Downloads\\www.9yards.nl_en_.png",
     "IsEnabled": true,
-    "StreamFormat": 0,
-    "ContainerFormat": 0
+    "StreamFormat": 1,
+    "ContainerFormat": 1
   },
   {
     "Id": "2e8d2b1b-58aa-4b96-9a31-71a57055b014",
