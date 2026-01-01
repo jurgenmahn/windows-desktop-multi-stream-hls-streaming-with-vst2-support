@@ -372,7 +372,7 @@
                                 <TextBlock Text="Segment Duration (seconds)" FontWeight="SemiBold" Margin="0,0,0,2"/>
                                 <TextBlock Text="Duration of each HLS/DASH segment (1-30)" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
                                 <TextBox x:Name="SegmentDurationTextBox"
-                                         Text="{Binding HlsSegmentDuration, UpdateSourceTrigger=PropertyChanged}"
+                                         Text="{Binding HlsSegmentDuration, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          PreviewTextInput="NumericTextBox_PreviewTextInput"
                                          LostFocus="SegmentDuration_LostFocus"/>
                             </StackPanel>
@@ -381,7 +381,7 @@
                                 <TextBlock Text="Playlist Size (segments)" FontWeight="SemiBold" Margin="0,0,0,2"/>
                                 <TextBlock Text="Number of segments in playlist file (2-30)" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
                                 <TextBox x:Name="PlaylistSizeTextBox"
-                                         Text="{Binding HlsPlaylistSize, UpdateSourceTrigger=PropertyChanged}"
+                                         Text="{Binding HlsPlaylistSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          PreviewTextInput="NumericTextBox_PreviewTextInput"
                                          LostFocus="PlaylistSize_LostFocus"/>
                             </StackPanel>

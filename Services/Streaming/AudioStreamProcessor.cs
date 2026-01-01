@@ -212,6 +212,9 @@ public class AudioStreamProcessor : IDisposable
         // Clean up any leftover files from previous runs before starting
         CleanupStreamOutputFolder();
 
+        // Recreate master playlist after cleanup
+        CreateMasterPlaylist(_streamOutputDir, _config.EncodingProfiles);
+
         // Create debug WAV file for raw capture (before VST)
         if (_debugAudioEnabled)
         {
