@@ -2,7 +2,7 @@
   "FfmpegPath": "FFmpeg/bin/ffmpeg.exe",
   "HlsOutputDirectory": "hls_output",
   "WebServerPort": 8080,
-  "BaseDomain": "http://192.168.113.17:8080",
+  "BaseDomain": "http://192.168.113.48:8080",
   "Streams": [
     {
       "Id": "14a8dc70-9c74-4e40-855f-7d7b81ba2b1e",
@@ -46,6 +46,14 @@
           "Name": "192kbps AAC",
           "Codec": 0,
           "Bitrate": 192000,
+          "SampleRate": 48000,
+          "SegmentDuration": 4,
+          "PlaylistSize": 5
+        },
+        {
+          "Name": "320kbps MP3",
+          "Codec": 1,
+          "Bitrate": 320000,
           "SampleRate": 48000,
           "SegmentDuration": 4,
           "PlaylistSize": 5
@@ -217,7 +225,7 @@
         "DeviceName": "Headphones (SteelSeries Arctis 9 Game) (Loopback)",
         "SampleRate": 48000,
         "Channels": 2,
-        "BufferSize": 512
+        "BufferSize": 1024
       },
       "VstPlugins": [
         {

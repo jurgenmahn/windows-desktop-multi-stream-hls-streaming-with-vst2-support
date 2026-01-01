@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AudioProcessorAndStreamer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+edff8155da5c95b89994ad00f2f07f76cc3a9096")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ebe28b5fdc365531b9e7418a542947b26133a371")]
 [assembly: System.Reflection.AssemblyProductAttribute("AudioProcessorAndStreamer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AudioProcessorAndStreamer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

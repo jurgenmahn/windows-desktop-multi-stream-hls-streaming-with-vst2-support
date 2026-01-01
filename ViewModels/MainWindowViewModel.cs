@@ -12,6 +12,8 @@ using AudioProcessorAndStreamer.Services.Web;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Options;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 
 namespace AudioProcessorAndStreamer.ViewModels;
 
@@ -378,6 +380,143 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         var dialog = new Views.AboutDialog();
         dialog.Owner = Application.Current.MainWindow;
         dialog.ShowDialog();
+    }
+
+    [RelayCommand]
+    private async Task ImportConfigAsync()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Import Configuration",
+            Filter = "JSON Files (*.json)|*.json|All Files (*.*)|*.*",
+            CheckFileExists = true
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(dialog.FileName);
+            var exportData = JsonSerializer.Deserialize<ConfigExportData>(json);
+
+            if (exportData == null)
+            {
+                MessageBox.Show("Invalid configuration file.", "Import Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var result = MessageBox.Show(
+                "Importing will replace your current configuration.\n\nDo you want to continue?",
+                "Import Configuration",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            // Stop all streams and server
+            var wasServerRunning = IsServerRunning;
+            if (wasServerRunning)
+            {
+                await StopServerAsync();
+            }
+            _streamManager.StopAllStreams();
+
+            // Dispose old streams
+            foreach (var stream in Streams)
+            {
+                stream.Dispose();
+            }
+            Streams.Clear();
+
+            // Apply app configuration
+            if (exportData.AppConfig != null)
+            {
+                _config.BaseDomain = exportData.AppConfig.BaseDomain;
+                _config.WebServerPort = exportData.AppConfig.WebServerPort;
+                _config.HlsOutputDirectory = exportData.AppConfig.HlsOutputDirectory;
+                _config.LazyProcessing = exportData.AppConfig.LazyProcessing;
+                _config.StreamsPagePath = exportData.AppConfig.StreamsPagePath;
+                _config.DebugAudioEnabled = exportData.AppConfig.DebugAudioEnabled;
+                _config.MonitorOutputDevice = exportData.AppConfig.MonitorOutputDevice;
+                SaveAppConfig();
+                _monitorService.SetOutputDevice(_config.MonitorOutputDevice);
+            }
+
+            // Apply stream configurations
+            if (exportData.Streams != null)
+            {
+                foreach (var config in exportData.Streams)
+                {
+                    var vm = new StreamViewModel(config, _streamManager, _monitorService);
+                    Streams.Add(vm);
+                }
+                SaveStreamsToConfig();
+                UpdateWebServerStreams();
+            }
+
+            // Restart server if it was running
+            if (wasServerRunning)
+            {
+                await StartServerAsync();
+            }
+
+            MessageBox.Show("Configuration imported successfully.", "Import Complete",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to import configuration: {ex.Message}", "Import Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task ExportConfigAsync()
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Export Configuration",
+            Filter = "JSON Files (*.json)|*.json|All Files (*.*)|*.*",
+            DefaultExt = ".json",
+            FileName = "AudioProcessorConfig.json"
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            var exportData = new ConfigExportData
+            {
+                AppConfig = new AppConfiguration
+                {
+                    BaseDomain = _config.BaseDomain,
+                    WebServerPort = _config.WebServerPort,
+                    HlsOutputDirectory = _config.HlsOutputDirectory,
+                    LazyProcessing = _config.LazyProcessing,
+                    StreamsPagePath = _config.StreamsPagePath,
+                    DebugAudioEnabled = _config.DebugAudioEnabled,
+                    MonitorOutputDevice = _config.MonitorOutputDevice
+                },
+                Streams = Streams.Select(s => s.Configuration).ToList()
+            };
+
+            var json = JsonSerializer.Serialize(exportData, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(dialog.FileName, json);
+
+            MessageBox.Show("Configuration exported successfully.", "Export Complete",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to export configuration: {ex.Message}", "Export Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private void Exit()
+    {
+        Application.Current.Shutdown();
     }
 
     public void Dispose()

@@ -44,6 +44,14 @@
         "SampleRate": 48000,
         "SegmentDuration": 4,
         "PlaylistSize": 5
+      },
+      {
+        "Name": "320kbps MP3",
+        "Codec": 1,
+        "Bitrate": 320000,
+        "SampleRate": 48000,
+        "SegmentDuration": 4,
+        "PlaylistSize": 5
       }
     ],
     "StreamPath": "stream1",

@@ -16,5 +16,5 @@ C:\Users\jurge\source\repos\AudioProcessorAndStreamer\App.xaml
 355-257349301
 Controls\OscilloscopeControl.xaml;Controls\SpectrumAnalyzerControl.xaml;Controls\StatusIndicator.xaml;MainWindow.xaml;Views\AboutDialog.xaml;Views\ConfigurationDialog.xaml;
 
-False
+True
 

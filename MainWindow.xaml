@@ -90,14 +90,17 @@
         </Grid.RowDefinitions>
 
         <!-- Menu Bar -->
-        <Border Grid.Row="0" Background="#F0F0F0" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="4">
-            <StackPanel Orientation="Horizontal">
-                <Button Content="File" Style="{StaticResource MenuButtonStyle}"/>
-                <Button Content="Configuration" Style="{StaticResource MenuButtonStyle}"
-                        Command="{Binding OpenConfigurationCommand}"/>
-                <Button Content="About" Style="{StaticResource MenuButtonStyle}"
-                        Command="{Binding OpenAboutCommand}"/>
-            </StackPanel>
+        <Border Grid.Row="0" Background="#F0F0F0" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+            <Menu Background="Transparent">
+                <MenuItem Header="_File">
+                    <MenuItem Header="_Import Configuration..." Command="{Binding ImportConfigCommand}"/>
+                    <MenuItem Header="_Export Configuration..." Command="{Binding ExportConfigCommand}"/>
+                    <Separator/>
+                    <MenuItem Header="E_xit" Command="{Binding ExitCommand}"/>
+                </MenuItem>
+                <MenuItem Header="_Configuration" Command="{Binding OpenConfigurationCommand}"/>
+                <MenuItem Header="_About" Command="{Binding OpenAboutCommand}"/>
+            </Menu>
         </Border>
 
         <!-- Toolbar -->

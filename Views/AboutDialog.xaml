@@ -51,7 +51,7 @@
 
         <!-- Credits -->
         <StackPanel Grid.Row="3" HorizontalAlignment="Center" Margin="0,20,0,0">
-            <TextBlock Text="Specially developed for"
+            <TextBlock Text="Custom developed for"
                        FontSize="11"
                        Foreground="#666666"
                        HorizontalAlignment="Center"/>

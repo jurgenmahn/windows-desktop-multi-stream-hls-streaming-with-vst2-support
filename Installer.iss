@@ -1,8 +1,8 @@
 ; Inno Setup Script for Audio Processor And Streamer
-; To build this installer:
-; 1. Build the application in Release mode: dotnet publish -c Release -r win-x64 --self-contained
-; 2. Open this file with Inno Setup Compiler
-; 3. Click Build > Compile
+; To build this installer, run: build-installer.bat
+; Or manually:
+;   1. dotnet build -c Release -p:Platform=x64
+;   2. Open this file with Inno Setup Compiler and press F9
 
 #define MyAppName "Audio Processor And Streamer"
 #define MyAppVersion "1.0.0"
@@ -10,8 +10,8 @@
 #define MyAppExeName "AudioProcessorAndStreamer.exe"
 #define MyAppURL ""
 
-; Path to the published output (adjust if using different publish location)
-#define BuildOutput "..\bin\x64\Release\net8.0-windows\win-x64"
+; Path to the build output
+#define BuildOutput "bin\x64\Release\net8.0-windows\win-x64"
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
@@ -41,9 +41,10 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; Main application files
 Source: "{#BuildOutput}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildOutput}\*.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#BuildOutput}\*.json"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
 Source: "{#BuildOutput}\*.runtimeconfig.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildOutput}\*.deps.json"; DestDir: "{app}"; Flags: ignoreversion
+; Config file - don't overwrite if user modified it
+Source: "{#BuildOutput}\appsettings.json"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
 
 ; FFmpeg folder
 Source: "{#BuildOutput}\FFmpeg\*"; DestDir: "{app}\FFmpeg"; Flags: ignoreversion recursesubdirs createallsubdirs

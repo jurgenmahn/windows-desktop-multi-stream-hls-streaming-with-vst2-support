@@ -1,5 +1,14 @@
 namespace AudioProcessorAndStreamer.Models;
 
+/// <summary>
+/// Data structure for importing/exporting complete application configuration.
+/// </summary>
+public class ConfigExportData
+{
+    public AppConfiguration? AppConfig { get; set; }
+    public List<StreamConfiguration>? Streams { get; set; }
+}
+
 public class AppConfiguration
 {
     public string FfmpegPath { get; set; } = "FFmpeg/bin/ffmpeg.exe";
