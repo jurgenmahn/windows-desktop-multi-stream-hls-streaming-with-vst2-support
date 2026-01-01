@@ -191,9 +191,9 @@ public class HlsWebServer : IAsyncDisposable
         {
             RequestReceived?.Invoke(this, $"{context.Request.Method} {context.Request.Path}");
 
-            // Track listeners for HLS segment/playlist requests
+            // Track listeners for HLS/DASH segment/playlist requests
             var path = context.Request.Path.Value ?? "";
-            if (path.StartsWith("/hls/") && (path.EndsWith(".ts") || path.EndsWith(".m3u8")))
+            if (path.StartsWith("/hls/") && (path.EndsWith(".ts") || path.EndsWith(".m3u8") || path.EndsWith(".m4s") || path.EndsWith(".mpd") || path.EndsWith(".mp4")))
             {
                 // Extract stream path from URL: /hls/{streamPath}/...
                 var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -217,8 +217,8 @@ public class HlsWebServer : IAsyncDisposable
             ServeUnknownFileTypes = false,
             OnPrepareResponse = ctx =>
             {
-                // Disable caching for playlist files
-                if (ctx.File.Name.EndsWith(".m3u8"))
+                // Disable caching for playlist/manifest files (HLS .m3u8 and DASH .mpd)
+                if (ctx.File.Name.EndsWith(".m3u8") || ctx.File.Name.EndsWith(".mpd"))
                 {
                     ctx.Context.Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
                     ctx.Context.Response.Headers.Append("Pragma", "no-cache");
@@ -226,7 +226,7 @@ public class HlsWebServer : IAsyncDisposable
                 }
                 else
                 {
-                    // Allow caching for segments
+                    // Allow caching for segments (.ts, .m4s, .mp4)
                     ctx.Context.Response.Headers.Append("Cache-Control", "public, max-age=3600");
                 }
             }
@@ -334,6 +334,7 @@ public class HlsWebServer : IAsyncDisposable
         sb.AppendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
         sb.AppendLine("  <title>Streams</title>");
         sb.AppendLine("  <script src=\"https://cdn.jsdelivr.net/npm/hls.js@latest\"></script>");
+        sb.AppendLine("  <script src=\"https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js\"></script>");
         sb.AppendLine("  <style>");
         sb.AppendLine("    * { box-sizing: border-box; margin: 0; padding: 0; }");
         sb.AppendLine("    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }");
@@ -374,12 +375,28 @@ public class HlsWebServer : IAsyncDisposable
         var streamIndex = 0;
         foreach (var stream in _streams.Where(s => s.IsEnabled))
         {
-            var streamUrl = $"{baseUrl}/hls/{stream.StreamPath}/master.m3u8";
+            // Determine URL based on stream format
+            var isDash = stream.StreamFormat == StreamFormat.Dash;
+            string manifestFile;
+            if (isDash)
+            {
+                // For DASH, use the first profile's MPD (each profile has its own MPD)
+                var firstProfile = stream.EncodingProfiles.FirstOrDefault();
+                manifestFile = firstProfile != null
+                    ? $"{firstProfile.Name.ToLowerInvariant().Replace(" ", "_")}.mpd"
+                    : "stream.mpd";
+            }
+            else
+            {
+                manifestFile = "master.m3u8";
+            }
+            var streamUrl = $"{baseUrl}/hls/{stream.StreamPath}/{manifestFile}";
+            var formatType = isDash ? "dash" : "hls";
             var logoHtml = !string.IsNullOrEmpty(stream.LogoPath) && File.Exists(stream.LogoPath)
                 ? $"<img src=\"data:image/png;base64,{Convert.ToBase64String(File.ReadAllBytes(stream.LogoPath))}\" alt=\"{System.Net.WebUtility.HtmlEncode(stream.Name)}\">"
                 : "&#9835;";
 
-            sb.AppendLine($"    <div class=\"stream\" data-url=\"{streamUrl}\" data-index=\"{streamIndex}\">");
+            sb.AppendLine($"    <div class=\"stream\" data-url=\"{streamUrl}\" data-format=\"{formatType}\" data-index=\"{streamIndex}\">");
             sb.AppendLine($"      <div class=\"stream-header\">");
             sb.AppendLine($"        <div class=\"stream-logo\">{logoHtml}</div>");
             sb.AppendLine($"        <div class=\"stream-info\">");
@@ -473,7 +490,8 @@ public class HlsWebServer : IAsyncDisposable
         sb.AppendLine("        // Stop playing");
         sb.AppendLine("        stopTimer(index);");
         sb.AppendLine("        if (players[index]) {");
-        sb.AppendLine("          players[index].destroy();");
+        sb.AppendLine("          if (players[index].destroy) players[index].destroy();");
+        sb.AppendLine("          else if (players[index].reset) players[index].reset();");
         sb.AppendLine("          delete players[index];");
         sb.AppendLine("        }");
         sb.AppendLine("        audio.pause();");
@@ -485,69 +503,100 @@ public class HlsWebServer : IAsyncDisposable
         sb.AppendLine("      } else {");
         sb.AppendLine("        // Start playing");
         sb.AppendLine("        const url = stream.dataset.url;");
+        sb.AppendLine("        const format = stream.dataset.format;");
         sb.AppendLine("        playerContainer.classList.add('active');");
         sb.AppendLine("        btn.classList.add('playing');");
         sb.AppendLine("        btnText.textContent = 'Stop';");
         sb.AppendLine("        btnIcon.innerHTML = '&#9632;';");
-        sb.AppendLine("        initPlayer(index, url);");
+        sb.AppendLine("        initPlayer(index, url, format);");
         sb.AppendLine("      }");
         sb.AppendLine("    }");
         sb.AppendLine("    ");
-        sb.AppendLine("    function initPlayer(index, url) {");
+        sb.AppendLine("    function initPlayer(index, url, format) {");
         sb.AppendLine("      const audio = document.getElementById(`audio-${index}`);");
         sb.AppendLine("      const qualitySelect = document.getElementById(`quality-${index}`);");
         sb.AppendLine("      ");
-        sb.AppendLine("      if (Hls.isSupported()) {");
-        sb.AppendLine("        const hls = new Hls({");
-        sb.AppendLine("          enableWorker: true,");
-        sb.AppendLine("          lowLatencyMode: true,");
-        sb.AppendLine("          liveDurationInfinity: true,");
-        sb.AppendLine("          liveBackBufferLength: 30,");
-        sb.AppendLine("          backBufferLength: 90");
-        sb.AppendLine("        });");
-        sb.AppendLine("        ");
-        sb.AppendLine("        hls.loadSource(url);");
-        sb.AppendLine("        hls.attachMedia(audio);");
-        sb.AppendLine("        ");
-        sb.AppendLine("        hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {");
-        sb.AppendLine("          audio.play().then(() => startTimer(index)).catch(e => console.log('Autoplay prevented:', e));");
-        sb.AppendLine("        });");
-        sb.AppendLine("        ");
-        sb.AppendLine("        hls.on(Hls.Events.LEVEL_SWITCHED, function(event, data) {");
-        sb.AppendLine("          // Update quality selector when auto-switching");
-        sb.AppendLine("          if (hls.autoLevelEnabled) {");
-        sb.AppendLine("            qualitySelect.value = '-1';");
-        sb.AppendLine("          }");
-        sb.AppendLine("        });");
-        sb.AppendLine("        ");
-        sb.AppendLine("        hls.on(Hls.Events.ERROR, function(event, data) {");
-        sb.AppendLine("          console.error('HLS error:', data);");
-        sb.AppendLine("          if (data.fatal) {");
-        sb.AppendLine("            switch(data.type) {");
-        sb.AppendLine("              case Hls.ErrorTypes.NETWORK_ERROR:");
-        sb.AppendLine("                hls.startLoad();");
-        sb.AppendLine("                break;");
-        sb.AppendLine("              case Hls.ErrorTypes.MEDIA_ERROR:");
-        sb.AppendLine("                hls.recoverMediaError();");
-        sb.AppendLine("                break;");
-        sb.AppendLine("              default:");
-        sb.AppendLine("                togglePlay(index);");
-        sb.AppendLine("                break;");
+        sb.AppendLine("      if (format === 'dash') {");
+        sb.AppendLine("        // DASH playback using dash.js");
+        sb.AppendLine("        if (typeof dashjs !== 'undefined') {");
+        sb.AppendLine("          const player = dashjs.MediaPlayer().create();");
+        sb.AppendLine("          player.initialize(audio, url, true);");
+        sb.AppendLine("          player.updateSettings({");
+        sb.AppendLine("            streaming: {");
+        sb.AppendLine("              delay: { liveDelay: 4 },");
+        sb.AppendLine("              liveCatchup: { enabled: true }");
         sb.AppendLine("            }");
-        sb.AppendLine("          }");
-        sb.AppendLine("        });");
-        sb.AppendLine("        ");
-        sb.AppendLine("        players[index] = hls;");
-        sb.AppendLine("      } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {");
-        sb.AppendLine("        // Native HLS support (Safari) - quality selection not available");
-        sb.AppendLine("        audio.src = url;");
-        sb.AppendLine("        audio.addEventListener('loadedmetadata', function() {");
-        sb.AppendLine("          audio.play().then(() => startTimer(index)).catch(e => console.log('Autoplay prevented:', e));");
-        sb.AppendLine("        });");
-        sb.AppendLine("        qualitySelect.disabled = true;");
+        sb.AppendLine("          });");
+        sb.AppendLine("          ");
+        sb.AppendLine("          player.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, function() {");
+        sb.AppendLine("            startTimer(index);");
+        sb.AppendLine("          });");
+        sb.AppendLine("          ");
+        sb.AppendLine("          player.on(dashjs.MediaPlayer.events.ERROR, function(e) {");
+        sb.AppendLine("            console.error('DASH error:', e);");
+        sb.AppendLine("          });");
+        sb.AppendLine("          ");
+        sb.AppendLine("          // Quality selection for DASH - disabled for now (auto ABR)");
+        sb.AppendLine("          qualitySelect.disabled = true;");
+        sb.AppendLine("          players[index] = player;");
+        sb.AppendLine("        } else {");
+        sb.AppendLine("          alert('DASH playback is not supported in this browser');");
+        sb.AppendLine("          togglePlay(index);");
+        sb.AppendLine("        }");
         sb.AppendLine("      } else {");
-        sb.AppendLine("        alert('HLS is not supported in this browser');");
-        sb.AppendLine("        togglePlay(index);");
+        sb.AppendLine("        // HLS playback using hls.js");
+        sb.AppendLine("        if (Hls.isSupported()) {");
+        sb.AppendLine("          const hls = new Hls({");
+        sb.AppendLine("            enableWorker: true,");
+        sb.AppendLine("            lowLatencyMode: true,");
+        sb.AppendLine("            liveDurationInfinity: true,");
+        sb.AppendLine("            liveBackBufferLength: 30,");
+        sb.AppendLine("            backBufferLength: 90");
+        sb.AppendLine("          });");
+        sb.AppendLine("          ");
+        sb.AppendLine("          hls.loadSource(url);");
+        sb.AppendLine("          hls.attachMedia(audio);");
+        sb.AppendLine("          ");
+        sb.AppendLine("          hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {");
+        sb.AppendLine("            audio.play().then(() => startTimer(index)).catch(e => console.log('Autoplay prevented:', e));");
+        sb.AppendLine("          });");
+        sb.AppendLine("          ");
+        sb.AppendLine("          hls.on(Hls.Events.LEVEL_SWITCHED, function(event, data) {");
+        sb.AppendLine("            // Update quality selector when auto-switching");
+        sb.AppendLine("            if (hls.autoLevelEnabled) {");
+        sb.AppendLine("              qualitySelect.value = '-1';");
+        sb.AppendLine("            }");
+        sb.AppendLine("          });");
+        sb.AppendLine("          ");
+        sb.AppendLine("          hls.on(Hls.Events.ERROR, function(event, data) {");
+        sb.AppendLine("            console.error('HLS error:', data);");
+        sb.AppendLine("            if (data.fatal) {");
+        sb.AppendLine("              switch(data.type) {");
+        sb.AppendLine("                case Hls.ErrorTypes.NETWORK_ERROR:");
+        sb.AppendLine("                  hls.startLoad();");
+        sb.AppendLine("                  break;");
+        sb.AppendLine("                case Hls.ErrorTypes.MEDIA_ERROR:");
+        sb.AppendLine("                  hls.recoverMediaError();");
+        sb.AppendLine("                  break;");
+        sb.AppendLine("                default:");
+        sb.AppendLine("                  togglePlay(index);");
+        sb.AppendLine("                  break;");
+        sb.AppendLine("              }");
+        sb.AppendLine("            }");
+        sb.AppendLine("          });");
+        sb.AppendLine("          ");
+        sb.AppendLine("          players[index] = hls;");
+        sb.AppendLine("        } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {");
+        sb.AppendLine("          // Native HLS support (Safari) - quality selection not available");
+        sb.AppendLine("          audio.src = url;");
+        sb.AppendLine("          audio.addEventListener('loadedmetadata', function() {");
+        sb.AppendLine("            audio.play().then(() => startTimer(index)).catch(e => console.log('Autoplay prevented:', e));");
+        sb.AppendLine("          });");
+        sb.AppendLine("          qualitySelect.disabled = true;");
+        sb.AppendLine("        } else {");
+        sb.AppendLine("          alert('HLS is not supported in this browser');");
+        sb.AppendLine("          togglePlay(index);");
+        sb.AppendLine("        }");
         sb.AppendLine("      }");
         sb.AppendLine("    }");
         sb.AppendLine("    ");

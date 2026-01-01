@@ -112,6 +112,37 @@
                 <TextBlock Text="Stream Path (URL)" FontWeight="SemiBold" Margin="0,0,0,4"/>
                 <TextBox Text="{Binding SelectedStream.StreamPath, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12"/>
 
+                <!-- Stream Format -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="Stream Format" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                        <TextBlock Text="Protocol for streaming (HLS or DASH)" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
+                        <ComboBox SelectedValue="{Binding SelectedStream.StreamFormat}"
+                                  SelectedValuePath="Tag"
+                                  SelectionChanged="StreamFormat_SelectionChanged">
+                            <ComboBoxItem Content="HLS (HTTP Live Streaming)" Tag="{x:Static models:StreamFormat.Hls}"/>
+                            <ComboBoxItem Content="DASH (MPEG-DASH)" Tag="{x:Static models:StreamFormat.Dash}"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="Container Format" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                        <TextBlock Text="Segment format (DASH requires fMP4)" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="ContainerFormatComboBox"
+                                  SelectedValue="{Binding SelectedStream.ContainerFormat}"
+                                  SelectedValuePath="Tag"
+                                  SelectionChanged="ContainerFormat_SelectionChanged">
+                            <ComboBoxItem Content="MPEG-TS (.ts segments)" Tag="{x:Static models:ContainerFormat.MpegTs}"/>
+                            <ComboBoxItem Content="fMP4 (.m4s segments)" Tag="{x:Static models:ContainerFormat.Fmp4}"/>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+
                 <!-- Audio Input -->
                 <TextBlock Text="Audio Input Device" FontWeight="SemiBold" Margin="0,0,0,4"/>
                 <Grid Margin="0,0,0,12">
@@ -314,8 +345,8 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="HLS Output Directory" FontWeight="SemiBold" Margin="0,0,0,2"/>
-                                <TextBlock Text="Folder for HLS segment files (.ts, .m3u8)" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
+                                <TextBlock Text="Stream Output Directory" FontWeight="SemiBold" Margin="0,0,0,2"/>
+                                <TextBlock Text="Folder for HLS/DASH stream files" FontSize="10" Foreground="#666666" Margin="0,0,0,4"/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>

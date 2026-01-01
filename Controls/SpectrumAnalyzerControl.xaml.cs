@@ -27,12 +27,10 @@ public partial class SpectrumAnalyzerControl : UserControl
 
     // Pre-calculated bar data to minimize UI thread work
     private int[] _barHeights = new int[BandCount];
-    private int[] _barColors = new int[BandCount]; // 0=green, 1=yellow, 2=red
     private int[] _peakPositions = new int[BandCount];
-    private int[] _peakColors = new int[BandCount];
 
-    // Bar rectangles for each band
-    private Rectangle[] _bars = new Rectangle[BandCount];
+    // Segmented bar rectangles [band][segment]
+    private Rectangle[,] _segments = null!;
     private Rectangle[] _peakBars = new Rectangle[BandCount];
     private Rectangle _backgroundRect = null!;
 
@@ -43,11 +41,19 @@ public partial class SpectrumAnalyzerControl : UserControl
     private const int CanvasWidth = BandCount * (BarWidth + BarSpacing) - BarSpacing;
     private const int CanvasHeight = 45;
     private const float SmoothingFactor = 0.35f;
-    private const float PeakDecayRate = 0.015f;
+    private const float PeakDecayRate = 0.012f;
+
+    // Segment configuration
+    private const int SegmentHeight = 3;
+    private const int SegmentGap = 1;
+    private const int SegmentStep = SegmentHeight + SegmentGap; // 4px per segment
+    private const int SegmentsPerBand = CanvasHeight / SegmentStep; // 11 segments
+
+    // Color zone thresholds (as percentage of total segments)
+    private const float GreenZone = 0.60f;  // Bottom 60% is green
+    private const float YellowZone = 0.85f; // 60-85% is yellow, 85-100% is red
 
     // Reference level for 0dB - calibrated for FFT magnitude output
-    // Adjust this value to calibrate the meter (higher = bars lower, lower = bars higher)
-    // FFT of normalized audio (-1 to 1) produces magnitudes typically 0.001 to 0.1
     private const float ReferenceLevel = 0.1f;
 
     // 20 frequency bands
@@ -63,14 +69,29 @@ public partial class SpectrumAnalyzerControl : UserControl
         "250", "315", "400", "500", "630", "800", "1K", "2K", "4K", "8K"
     };
 
-    // Colors - light blue theme
-    private static readonly SolidColorBrush BackgroundBrush = new(Color.FromRgb(0x1A, 0x2A, 0x3A)); // Dark blue-ish
+    // Colors - background
+    private static readonly SolidColorBrush BackgroundBrush = new(Color.FromRgb(0x1A, 0x1A, 0x1A)); // Dark
+
+    // Green theme (default for input)
     private static readonly SolidColorBrush GreenBrush = new(Color.FromRgb(0x32, 0xCD, 0x32));
     private static readonly SolidColorBrush YellowBrush = new(Color.FromRgb(0xFF, 0xD7, 0x00));
     private static readonly SolidColorBrush RedBrush = new(Color.FromRgb(0xFF, 0x45, 0x45));
-    private static readonly SolidColorBrush PeakGreenBrush = new(Color.FromRgb(0x90, 0xFF, 0x90));
-    private static readonly SolidColorBrush PeakYellowBrush = new(Color.FromRgb(0xFF, 0xEE, 0x80));
-    private static readonly SolidColorBrush PeakRedBrush = new(Color.FromRgb(0xFF, 0x90, 0x90));
+
+    // Orange theme (for output)
+    private static readonly SolidColorBrush OrangeBrush = new(Color.FromRgb(0xFF, 0x8C, 0x00));
+    private static readonly SolidColorBrush OrangeYellowBrush = new(Color.FromRgb(0xFF, 0xB3, 0x00));
+    private static readonly SolidColorBrush OrangeRedBrush = new(Color.FromRgb(0xFF, 0x45, 0x45));
+
+    // Dependency property for orange theme
+    public static readonly DependencyProperty UseOrangeThemeProperty =
+        DependencyProperty.Register(nameof(UseOrangeTheme), typeof(bool), typeof(SpectrumAnalyzerControl),
+            new PropertyMetadata(false));
+
+    public bool UseOrangeTheme
+    {
+        get => (bool)GetValue(UseOrangeThemeProperty);
+        set => SetValue(UseOrangeThemeProperty, value);
+    }
 
     public string Label
     {
@@ -94,7 +115,6 @@ public partial class SpectrumAnalyzerControl : UserControl
         FrequencyLabels.ItemsSource = BandLabels;
 
         // Use a timer at ~25fps instead of CompositionTarget.Rendering (60fps)
-        // This reduces UI thread load significantly with multiple analyzers
         _renderTimer = new DispatcherTimer(DispatcherPriority.Render)
         {
             Interval = TimeSpan.FromMilliseconds(40) // 25fps
@@ -136,32 +156,64 @@ public partial class SpectrumAnalyzerControl : UserControl
         Canvas.SetTop(_backgroundRect, 0);
         SpectrumCanvas.Children.Add(_backgroundRect);
 
-        // Create bars for each band
-        for (int i = 0; i < BandCount; i++)
+        // Initialize segment array
+        _segments = new Rectangle[BandCount, SegmentsPerBand];
+
+        // Create segments for each band
+        for (int band = 0; band < BandCount; band++)
         {
-            int x = i * (BarWidth + BarSpacing);
+            int x = band * (BarWidth + BarSpacing);
 
-            // Main bar (starts with 0 height at bottom)
-            _bars[i] = new Rectangle
+            // Create segments from bottom to top
+            for (int seg = 0; seg < SegmentsPerBand; seg++)
+            {
+                // Calculate Y position (bottom segment is seg=0)
+                int y = CanvasHeight - (seg + 1) * SegmentStep + SegmentGap;
+
+                // Determine color based on segment position
+                float segmentPercent = (float)(seg + 1) / SegmentsPerBand;
+                SolidColorBrush brush = GetSegmentBrush(segmentPercent);
+
+                var segment = new Rectangle
+                {
+                    Width = BarWidth,
+                    Height = SegmentHeight,
+                    Fill = brush,
+                    Visibility = Visibility.Hidden // Start hidden
+                };
+                Canvas.SetLeft(segment, x);
+                Canvas.SetTop(segment, y);
+                SpectrumCanvas.Children.Add(segment);
+                _segments[band, seg] = segment;
+            }
+
+            // Peak indicator bar (on top of segments)
+            _peakBars[band] = new Rectangle
             {
                 Width = BarWidth,
-                Height = 0,
-                Fill = GreenBrush
+                Height = SegmentHeight,
+                Fill = GetSegmentBrush(0), // Will be updated based on position
+                Visibility = Visibility.Hidden
             };
-            Canvas.SetLeft(_bars[i], x);
-            Canvas.SetTop(_bars[i], CanvasHeight); // Position at bottom (height=0)
-            SpectrumCanvas.Children.Add(_bars[i]);
+            Canvas.SetLeft(_peakBars[band], x);
+            Canvas.SetTop(_peakBars[band], CanvasHeight - SegmentHeight);
+            SpectrumCanvas.Children.Add(_peakBars[band]);
+        }
+    }
 
-            // Peak indicator bar
-            _peakBars[i] = new Rectangle
-            {
-                Width = BarWidth,
-                Height = 2,
-                Fill = PeakGreenBrush
-            };
-            Canvas.SetLeft(_peakBars[i], x);
-            Canvas.SetTop(_peakBars[i], CanvasHeight - 2); // Position at bottom
-            SpectrumCanvas.Children.Add(_peakBars[i]);
+    private SolidColorBrush GetSegmentBrush(float percentHeight)
+    {
+        if (UseOrangeTheme)
+        {
+            if (percentHeight <= GreenZone) return OrangeBrush;
+            if (percentHeight <= YellowZone) return OrangeYellowBrush;
+            return OrangeRedBrush;
+        }
+        else
+        {
+            if (percentHeight <= GreenZone) return GreenBrush;
+            if (percentHeight <= YellowZone) return YellowBrush;
+            return RedBrush;
         }
     }
 
@@ -182,9 +234,7 @@ public partial class SpectrumAnalyzerControl : UserControl
             Array.Clear(_smoothedBandValues);
             Array.Clear(_peakValues);
             Array.Clear(_barHeights);
-            Array.Clear(_barColors);
             Array.Clear(_peakPositions);
-            Array.Clear(_peakColors);
             _accumulatorIndex = 0;
             _newDataAvailable = false;
         }
@@ -202,16 +252,18 @@ public partial class SpectrumAnalyzerControl : UserControl
 
     private void ResetBars()
     {
-        if (!_isInitialized) return;
+        if (!_isInitialized || _segments == null) return;
 
-        for (int i = 0; i < BandCount; i++)
+        for (int band = 0; band < BandCount; band++)
         {
-            _bars[i].Height = 0;
-            Canvas.SetTop(_bars[i], CanvasHeight);
-            _bars[i].Fill = GreenBrush;
+            // Hide all segments
+            for (int seg = 0; seg < SegmentsPerBand; seg++)
+            {
+                _segments[band, seg].Visibility = Visibility.Hidden;
+            }
 
-            Canvas.SetTop(_peakBars[i], CanvasHeight - 2);
-            _peakBars[i].Fill = PeakGreenBrush;
+            // Hide peak
+            _peakBars[band].Visibility = Visibility.Hidden;
         }
     }
 
@@ -313,46 +365,77 @@ public partial class SpectrumAnalyzerControl : UserControl
                     _peakValues[i] = Math.Max(0, _peakValues[i] - PeakDecayRate);
                 }
 
-                // Pre-calculate bar heights and colors (minimize UI thread work)
+                // Pre-calculate bar heights (in segments)
                 float value = _smoothedBandValues[i];
                 float dB = value > 0.0001f ? 20f * MathF.Log10(value / ReferenceLevel) : -60f;
 
                 float normalizedHeight = (dB + 48f) / 54f;
                 normalizedHeight = Math.Clamp(normalizedHeight, 0, 1);
 
-                _barHeights[i] = (int)(normalizedHeight * CanvasHeight);
-                _barColors[i] = dB > 0 ? 2 : (dB > -3 ? 1 : 0);
+                _barHeights[i] = (int)(normalizedHeight * SegmentsPerBand);
 
-                // Peak
+                // Peak position (in segments)
                 float peakDb = _peakValues[i] > 0.0001f ? 20f * MathF.Log10(_peakValues[i] / ReferenceLevel) : -60f;
                 float peakNormalized = (peakDb + 48f) / 54f;
                 peakNormalized = Math.Clamp(peakNormalized, 0, 1);
 
-                _peakPositions[i] = (int)(peakNormalized * CanvasHeight);
-                _peakColors[i] = peakDb > 0 ? 2 : (peakDb > -3 ? 1 : 0);
+                _peakPositions[i] = (int)(peakNormalized * SegmentsPerBand);
             }
 
             _newDataAvailable = false;
         }
 
-        // Now update UI elements - this is the only part that must be on UI thread
+        // Now update UI elements
         UpdateBarsFromPreCalculated();
     }
 
-    private static readonly SolidColorBrush[] BarBrushes = { GreenBrush, YellowBrush, RedBrush };
-    private static readonly SolidColorBrush[] PeakBrushes = { PeakGreenBrush, PeakYellowBrush, PeakRedBrush };
-
     private void UpdateBarsFromPreCalculated()
     {
+        if (_segments == null) return;
+
         for (int band = 0; band < BandCount; band++)
         {
-            int barHeight = _barHeights[band];
-            _bars[band].Height = barHeight;
-            Canvas.SetTop(_bars[band], CanvasHeight - barHeight);
-            _bars[band].Fill = BarBrushes[_barColors[band]];
+            int activeSegments = _barHeights[band];
+            int peakSegment = _peakPositions[band];
 
-            Canvas.SetTop(_peakBars[band], CanvasHeight - _peakPositions[band] - 2);
-            _peakBars[band].Fill = PeakBrushes[_peakColors[band]];
+            // Update segment visibility
+            for (int seg = 0; seg < SegmentsPerBand; seg++)
+            {
+                bool shouldBeVisible = seg < activeSegments;
+                var segment = _segments[band, seg];
+
+                if (shouldBeVisible)
+                {
+                    if (segment.Visibility != Visibility.Visible)
+                    {
+                        segment.Visibility = Visibility.Visible;
+                        // Update color based on theme (in case theme changed)
+                        float segmentPercent = (float)(seg + 1) / SegmentsPerBand;
+                        segment.Fill = GetSegmentBrush(segmentPercent);
+                    }
+                }
+                else
+                {
+                    if (segment.Visibility != Visibility.Hidden)
+                    {
+                        segment.Visibility = Visibility.Hidden;
+                    }
+                }
+            }
+
+            // Update peak indicator
+            if (peakSegment > 0 && peakSegment > activeSegments)
+            {
+                int peakY = CanvasHeight - peakSegment * SegmentStep + SegmentGap;
+                Canvas.SetTop(_peakBars[band], peakY);
+                float peakPercent = (float)peakSegment / SegmentsPerBand;
+                _peakBars[band].Fill = GetSegmentBrush(peakPercent);
+                _peakBars[band].Visibility = Visibility.Visible;
+            }
+            else
+            {
+                _peakBars[band].Visibility = Visibility.Hidden;
+            }
         }
     }
 }

@@ -10,6 +10,49 @@ public class StreamConfiguration
     public string StreamPath { get; set; } = string.Empty;
     public string? LogoPath { get; set; }
     public bool IsEnabled { get; set; } = true;
+
+    /// <summary>
+    /// The streaming format to use (HLS or DASH).
+    /// </summary>
+    public StreamFormat StreamFormat { get; set; } = StreamFormat.Hls;
+
+    /// <summary>
+    /// The container format for segments (MPEG-TS or fMP4).
+    /// Note: DASH requires fMP4. MPEG-TS is only available for HLS.
+    /// </summary>
+    public ContainerFormat ContainerFormat { get; set; } = ContainerFormat.MpegTs;
+}
+
+/// <summary>
+/// Streaming protocol format.
+/// </summary>
+public enum StreamFormat
+{
+    /// <summary>
+    /// HTTP Live Streaming (Apple) - uses .m3u8 playlists
+    /// </summary>
+    Hls,
+
+    /// <summary>
+    /// Dynamic Adaptive Streaming over HTTP (MPEG) - uses .mpd manifests
+    /// </summary>
+    Dash
+}
+
+/// <summary>
+/// Container format for stream segments.
+/// </summary>
+public enum ContainerFormat
+{
+    /// <summary>
+    /// MPEG Transport Stream (.ts segments) - only compatible with HLS
+    /// </summary>
+    MpegTs,
+
+    /// <summary>
+    /// Fragmented MP4 (.m4s segments) - compatible with both HLS and DASH
+    /// </summary>
+    Fmp4
 }
 
 public class AudioInputConfig

@@ -193,7 +193,7 @@
 
                                     <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center">
                                         <controls:SpectrumAnalyzerControl Tag="InputSpectrumAnalyzer" Label="input"/>
-                                        <controls:SpectrumAnalyzerControl Tag="OutputSpectrumAnalyzer" Label="output" Margin="8,0,0,0"/>
+                                        <controls:SpectrumAnalyzerControl Tag="OutputSpectrumAnalyzer" Label="output" UseOrangeTheme="True" Margin="8,0,0,0"/>
                                     </StackPanel>
 
                                     <!-- Toggle Switches -->

@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{496DDA49-DDAB-6A5D-ADD4-E1A66E137A90}|AudioProcessorAndStreamer.csproj|c:\\users\\jurge\\source\\repos\\audioprocessorandstreamer\\views\\aboutdialog.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{496DDA49-DDAB-6A5D-ADD4-E1A66E137A90}|AudioProcessorAndStreamer.csproj|solutionrelative:views\\aboutdialog.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{496DDA49-DDAB-6A5D-ADD4-E1A66E137A90}|AudioProcessorAndStreamer.csproj|c:\\users\\jurge\\source\\repos\\audioprocessorandstreamer\\viewmodels\\streamviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{496DDA49-DDAB-6A5D-ADD4-E1A66E137A90}|AudioProcessorAndStreamer.csproj|solutionrelative:viewmodels\\streamviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -27,6 +31,18 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "AboutDialog.xaml",
+              "DocumentMoniker": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\Views\\AboutDialog.xaml",
+              "RelativeDocumentMoniker": "Views\\AboutDialog.xaml",
+              "ToolTip": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\Views\\AboutDialog.xaml",
+              "RelativeToolTip": "Views\\AboutDialog.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2026-01-01T18:39:29.592Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "StreamViewModel.cs",
               "DocumentMoniker": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\ViewModels\\StreamViewModel.cs",
               "RelativeDocumentMoniker": "ViewModels\\StreamViewModel.cs",
@@ -39,7 +55,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "MainWindow.xaml",
               "DocumentMoniker": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\MainWindow.xaml",
               "RelativeDocumentMoniker": "MainWindow.xaml",
@@ -50,7 +66,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "ConfigurationDialog.xaml",
               "DocumentMoniker": "C:\\Users\\jurge\\source\\repos\\AudioProcessorAndStreamer\\Views\\ConfigurationDialog.xaml",
               "RelativeDocumentMoniker": "Views\\ConfigurationDialog.xaml",

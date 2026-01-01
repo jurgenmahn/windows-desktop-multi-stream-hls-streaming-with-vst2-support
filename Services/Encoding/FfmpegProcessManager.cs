@@ -18,11 +18,15 @@ public class FfmpegProcessManager : IDisposable
     private readonly int _debugChannels;
     private readonly int _hlsSegmentDuration;
     private readonly int _hlsPlaylistSize;
+    private readonly StreamFormat _streamFormat;
+    private readonly ContainerFormat _containerFormat;
     private long _debugBytesWritten;
     private bool _disposed;
 
     public EncodingProfile Profile { get; }
     public string OutputPath { get; }
+    public StreamFormat StreamFormat => _streamFormat;
+    public ContainerFormat ContainerFormat => _containerFormat;
     public bool IsRunning => !_ffmpegProcess.HasExited;
 
     public event EventHandler<string>? ErrorDataReceived;
@@ -36,6 +40,8 @@ public class FfmpegProcessManager : IDisposable
         int inputChannels,
         int hlsSegmentDuration,
         int hlsPlaylistSize,
+        StreamFormat streamFormat = StreamFormat.Hls,
+        ContainerFormat containerFormat = ContainerFormat.MpegTs,
         bool debugAudioEnabled = false)
     {
         Profile = profile;
@@ -45,8 +51,10 @@ public class FfmpegProcessManager : IDisposable
         _debugChannels = inputChannels;
         _hlsSegmentDuration = hlsSegmentDuration;
         _hlsPlaylistSize = hlsPlaylistSize;
+        _streamFormat = streamFormat;
+        _containerFormat = containerFormat;
 
-        var arguments = BuildArguments(profile, outputPath, inputSampleRate, inputChannels, hlsSegmentDuration, hlsPlaylistSize, debugAudioEnabled);
+        var arguments = BuildArguments(profile, outputPath, inputSampleRate, inputChannels, hlsSegmentDuration, hlsPlaylistSize, streamFormat, containerFormat, debugAudioEnabled);
 
         // Delete existing debug_output.wav file if it exists (for clean start)
         if (debugAudioEnabled && profile.Name.Contains("192"))
@@ -139,6 +147,8 @@ public class FfmpegProcessManager : IDisposable
         int inputChannels,
         int hlsSegmentDuration,
         int hlsPlaylistSize,
+        StreamFormat streamFormat,
+        ContainerFormat containerFormat,
         bool debugAudioEnabled)
     {
         var codec = profile.Codec switch
@@ -152,8 +162,7 @@ public class FfmpegProcessManager : IDisposable
         var bitrateK = profile.Bitrate / 1000;
 
         // Input: raw PCM 16-bit signed little-endian
-        // Output: HLS with specified codec
-        System.Diagnostics.Debug.WriteLine($"[FFmpeg] Creating encoder: {profile.Name}, input={inputSampleRate}Hz/{inputChannels}ch, output={profile.SampleRate}Hz");
+        System.Diagnostics.Debug.WriteLine($"[FFmpeg] Creating encoder: {profile.Name}, format={streamFormat}/{containerFormat}, input={inputSampleRate}Hz/{inputChannels}ch, output={profile.SampleRate}Hz");
 
         // -y: overwrite output files without asking
         // -thread_queue_size: buffer input to handle irregular data delivery
@@ -180,22 +189,66 @@ public class FfmpegProcessManager : IDisposable
             args += $"-ar {profile.SampleRate} ";
         }
 
-        // HLS output options
-        // Use unique segment filenames per profile to avoid conflicts
         var profileBaseName = Path.GetFileNameWithoutExtension(outputPath);
-        var segmentPattern = Path.Combine(Path.GetDirectoryName(outputPath)!, $"{profileBaseName}_%03d.ts");
+        var outputDir = Path.GetDirectoryName(outputPath)!;
 
-        args += $"-f hls " +
-                $"-hls_time {hlsSegmentDuration} " +
-                $"-hls_list_size {hlsPlaylistSize} " +
-                $"-hls_flags delete_segments+append_list " +
-                $"-hls_segment_filename \"{segmentPattern}\" " +
-                $"\"{outputPath}\"";
+        if (streamFormat == StreamFormat.Dash)
+        {
+            // DASH output format (always uses fMP4)
+            // For DASH, outputPath should be the .mpd manifest file
+            var mpdPath = Path.Combine(outputDir, $"{profileBaseName}.mpd");
+            var initPattern = Path.Combine(outputDir, $"{profileBaseName}_init.m4s");
+            var mediaPattern = Path.Combine(outputDir, $"{profileBaseName}_$Number$.m4s");
+
+            args += $"-f dash " +
+                    $"-seg_duration {hlsSegmentDuration} " +
+                    $"-window_size {hlsPlaylistSize} " +
+                    $"-extra_window_size 0 " +
+                    $"-remove_at_exit 0 " +
+                    $"-use_template 1 " +
+                    $"-use_timeline 1 " +
+                    $"-init_seg_name \"{Path.GetFileName(initPattern)}\" " +
+                    $"-media_seg_name \"{profileBaseName}_$Number$.m4s\" " +
+                    $"-adaptation_sets \"id=0,streams=a\" " +
+                    $"\"{mpdPath}\"";
+        }
+        else
+        {
+            // HLS output format
+            string segmentExtension;
+            string hlsSegmentType = "";
+
+            if (containerFormat == ContainerFormat.Fmp4)
+            {
+                // HLS with fMP4 segments
+                segmentExtension = "m4s";
+                hlsSegmentType = "-hls_segment_type fmp4 ";
+                // fMP4 requires init segment
+                var initPath = Path.Combine(outputDir, $"{profileBaseName}_init.mp4");
+                hlsSegmentType += $"-hls_fmp4_init_filename \"{Path.GetFileName(initPath)}\" ";
+            }
+            else
+            {
+                // HLS with MPEG-TS segments (default)
+                segmentExtension = "ts";
+            }
+
+            var segmentPattern = Path.Combine(outputDir, $"{profileBaseName}_%03d.{segmentExtension}");
+
+            args += $"-f hls " +
+                    $"-hls_time {hlsSegmentDuration} " +
+                    $"-hls_list_size {hlsPlaylistSize} " +
+                    hlsSegmentType +
+                    $"-hls_flags delete_segments+append_list" +
+                    (containerFormat == ContainerFormat.Fmp4 ? "+independent_segments" : "") + " " +
+                    $"-hls_segment_filename \"{segmentPattern}\" " +
+                    $"\"{outputPath}\"";
+        }
 
         // Add debug WAV output (only for 192kbps profile to avoid duplicates)
         if (debugAudioEnabled && profile.Name.Contains("192"))
         {
-            var debugOutputPath = Path.Combine(Path.GetDirectoryName(outputPath)!, "debug_output.wav");
+            var debugOutputPath = Path.Combine(outputDir, "debug_output.wav");
             args += $" -c:a pcm_s16le \"{debugOutputPath}\"";
             System.Diagnostics.Debug.WriteLine($"[FFmpeg] Debug output file: {debugOutputPath}");
         }

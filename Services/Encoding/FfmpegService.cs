@@ -70,6 +70,8 @@ public class FfmpegService : IFfmpegService
         string outputPath,
         int inputSampleRate,
         int inputChannels,
+        StreamFormat streamFormat = StreamFormat.Hls,
+        ContainerFormat containerFormat = ContainerFormat.MpegTs,
         bool debugAudioEnabled = false)
     {
         if (!_isAvailable)
@@ -92,6 +94,8 @@ public class FfmpegService : IFfmpegService
             inputChannels,
             _hlsSegmentDuration,
             _hlsPlaylistSize,
+            streamFormat,
+            containerFormat,
             debugAudioEnabled);
     }
 }
