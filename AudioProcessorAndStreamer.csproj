@@ -13,7 +13,6 @@
     <RootNamespace>AudioProcessorAndStreamer</RootNamespace>
     <AssemblyName>AudioProcessorAndStreamer</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
 
     <!-- Self-contained deployment with single file -->
     <SelfContained>true</SelfContained>

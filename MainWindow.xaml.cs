@@ -31,11 +31,22 @@ public partial class MainWindow : Window
             AppLogo.Source = bitmap;
         }
 
-        // Set window icon from Assets folder
-        var iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "app.ico");
-        if (File.Exists(iconPath))
+        // Set window icon from logo.png (WPF can use PNG as icon)
+        if (File.Exists(logoPath))
         {
-            Icon = new BitmapImage(new Uri(iconPath, UriKind.Absolute));
+            try
+            {
+                var iconBitmap = new BitmapImage();
+                iconBitmap.BeginInit();
+                iconBitmap.UriSource = new Uri(logoPath, UriKind.Absolute);
+                iconBitmap.CacheOption = BitmapCacheOption.OnLoad;
+                iconBitmap.EndInit();
+                Icon = iconBitmap;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to load window icon: {ex.Message}");
+            }
         }
 
         // Auto-start web server and all streams after UI is fully rendered
