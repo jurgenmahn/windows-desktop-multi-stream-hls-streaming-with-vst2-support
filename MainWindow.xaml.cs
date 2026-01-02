@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private bool _minimizePreferenceSet;
     private bool _closePreferenceSet;
     private bool _minimizingFromClose; // Flag to prevent double prompt
+    private bool _forceClose; // Flag to bypass minimize-to-tray for auto-update
 
     public MainWindow()
     {
@@ -251,12 +252,29 @@ public partial class MainWindow : Window
         Close();
     }
 
+    /// <summary>
+    /// Forces the application to close without showing minimize-to-tray prompts.
+    /// Used by auto-updater to close the app before launching the installer.
+    /// </summary>
+    public void ForceClose()
+    {
+        _forceClose = true;
+        _isExiting = true;
+        Close();
+    }
+
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        DebugLogger.Log("MainWindow", $"OnClosing - _isExiting: {_isExiting}, _closePreferenceSet: {_closePreferenceSet}, _closeToTrayPreference: {_closeToTrayPreference}");
+        DebugLogger.Log("MainWindow", $"OnClosing - _isExiting: {_isExiting}, _forceClose: {_forceClose}, _closePreferenceSet: {_closePreferenceSet}, _closeToTrayPreference: {_closeToTrayPreference}");
 
+        // If force close is set (e.g., from auto-updater), bypass all prompts
+        if (_forceClose)
+        {
+            DebugLogger.Log("MainWindow", "Force close - bypassing minimize-to-tray prompt");
+            // Fall through to cleanup and close
+        }
         // If we're already exiting (from tray menu), don't show prompt
-        if (!_isExiting)
+        else if (!_isExiting)
         {
             // Ask user what they want to do (unless preference already set)
             if (!_closePreferenceSet)

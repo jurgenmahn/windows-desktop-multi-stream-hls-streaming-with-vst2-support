@@ -81,6 +81,7 @@ public class StreamManager : IStreamManager
             var hlsOutputDir = ResolveHlsOutputDirectory(_config.HlsOutputDirectory);
             DebugLogger.Log("StreamManager", $"'{config.Name}' - HLS output dir: {hlsOutputDir}");
 
+            DebugLogger.Log("StreamManager", $"'{config.Name}' - creating AudioStreamProcessor instance...");
             var processor = new AudioStreamProcessor(
                 config,
                 _vstHost,
@@ -90,13 +91,14 @@ public class StreamManager : IStreamManager
                 _config.LazyProcessing,
                 _config.HlsSegmentDuration,
                 _config.HlsPlaylistSize);
+            DebugLogger.Log("StreamManager", $"'{config.Name}' - AudioStreamProcessor created");
 
             processor.Stopped += (s, e) => OnStreamStopped(config.Id, config.Name);
 
             // Check for initialization errors before starting
             if (processor.HasInitializationErrors)
             {
-                System.Diagnostics.Debug.WriteLine($"[{config.Name}] Initialization errors - not starting stream");
+                DebugLogger.Log("StreamManager", $"'{config.Name}' - Initialization errors detected, not starting stream");
                 // Return the processor so caller can check errors, but don't add to active streams
                 return processor;
             }
@@ -108,11 +110,13 @@ public class StreamManager : IStreamManager
 
             try
             {
+                DebugLogger.Log("StreamManager", $"'{config.Name}' - calling processor.Start()...");
                 processor.Start();
+                DebugLogger.Log("StreamManager", $"'{config.Name}' - processor.Start() completed");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{config.Name}] ERROR: processor.Start() failed: {ex.Message}");
+                DebugLogger.Log("StreamManager", $"'{config.Name}' - ERROR: processor.Start() failed: {ex.Message}\n{ex.StackTrace}");
                 lock (_lock)
                 {
                     _activeStreams.Remove(config.Id);
@@ -130,7 +134,7 @@ public class StreamManager : IStreamManager
             if (processor.HasSampleRateMismatch)
             {
                 var warning = $"WARNING: Sample rate mismatch! Configured {processor.ConfiguredSampleRate}Hz but device is {processor.ActualSampleRate}Hz. Using device rate.";
-                System.Diagnostics.Debug.WriteLine($"[{config.Name}] {warning}");
+                DebugLogger.Log("StreamManager", $"'{config.Name}' - {warning}");
                 // Fire through StreamError as a warning (not a fatal error)
                 StreamError?.Invoke(this, new StreamErrorEventArgs(
                     config.Id,
@@ -139,13 +143,14 @@ public class StreamManager : IStreamManager
                     null));
             }
 
-            System.Diagnostics.Debug.WriteLine($"[{config.Name}] Stream started successfully");
+            DebugLogger.Log("StreamManager", $"'{config.Name}' - Stream started successfully");
             StreamStarted?.Invoke(this, new StreamEventArgs(config.Id, config.Name));
 
             return processor;
         }
         catch (Exception ex)
         {
+            DebugLogger.Log("StreamManager", $"'{config.Name}' - EXCEPTION in StartStream: {ex.Message}\n{ex.StackTrace}");
             StreamError?.Invoke(this, new StreamErrorEventArgs(
                 config.Id,
                 config.Name,

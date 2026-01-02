@@ -16,15 +16,15 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
 
     <!-- Version info - keep in sync with Installer.iss #define MyAppVersion -->
-    <Version>0.9.7</Version>
-    <AssemblyVersion>0.9.7.0</AssemblyVersion>
-    <FileVersion>0.9.7.0</FileVersion>
+    <Version>0.9.9</Version>
+    <AssemblyVersion>0.9.9.0</AssemblyVersion>
+    <FileVersion>0.9.9.0</FileVersion>
 
-    <!-- Self-contained deployment with single file -->
+    <!-- Self-contained deployment -->
+    <!-- Note: PublishSingleFile disabled because VST.NET uses C++/CLI mixed-mode assemblies -->
+    <!-- which are incompatible with single-file publish -->
     <SelfContained>true</SelfContained>
-    <PublishSingleFile>true</PublishSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <PublishSingleFile>false</PublishSingleFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -73,11 +73,24 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </Content>
-    <None Update="appsettings.json">
+    <Content Include="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </None>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
   </ItemGroup>
 
+  <!-- VST.NET interop DLLs contain native code and cannot be bundled into single-file -->
+  <!-- Copy them to publish directory after publish completes -->
+  <Target Name="CopyVstNetDlls" AfterTargets="Publish">
+    <Copy SourceFiles="$(NuGetPackageRoot)vst.net2-host\2.1.0\lib\net6.0\x64\Jacobi.Vst.Host.Interop.dll"
+          DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="$(NuGetPackageRoot)vst.net2-host\2.1.0\lib\net6.0\x64\Jacobi.Vst.Core.dll"
+          DestinationFolder="$(PublishDir)" />
+    <!-- Ijwhost.dll is required for C++/CLI assemblies to work in .NET Core -->
+    <Copy SourceFiles="$(NuGetPackageRoot)vst.net2-host\2.1.0\runtimes\win10-x64\native\Ijwhost.dll"
+          DestinationFolder="$(PublishDir)" />
+    <Message Text="Copied VST.NET DLLs and Ijwhost.dll to publish directory" Importance="high" />
+  </Target>
 
 </Project>

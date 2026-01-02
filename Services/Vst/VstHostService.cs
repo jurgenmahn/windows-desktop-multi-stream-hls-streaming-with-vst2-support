@@ -1,4 +1,5 @@
 using System.IO;
+using AudioProcessorAndStreamer.Infrastructure;
 using AudioProcessorAndStreamer.Models;
 using Jacobi.Vst.Core.Host;
 using Jacobi.Vst.Host.Interop;
@@ -12,37 +13,79 @@ public class VstHostService : IVstHostService
 
     public VstPluginInstance? LoadPlugin(string pluginPath)
     {
-        // Resolve relative paths to absolute using application base directory
-        var resolvedPath = ResolvePluginPath(pluginPath);
+        // This wrapper method checks prerequisites before calling the actual loader
+        // This avoids JIT compilation issues with Jacobi types
+        DebugLogger.Log("VstHostService", $"LoadPlugin(string) called with: {pluginPath}");
 
-        if (!File.Exists(resolvedPath))
-        {
-            System.Diagnostics.Debug.WriteLine($"VST plugin not found: {resolvedPath}");
-            return null;
-        }
+        // Check all required files first
+        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        var interopPath = Path.Combine(baseDir, "Jacobi.Vst.Host.Interop.dll");
+        var corePath = Path.Combine(baseDir, "Jacobi.Vst.Core.dll");
+        var ijwhostPath = Path.Combine(baseDir, "Ijwhost.dll");
 
+        DebugLogger.Log("VstHostService", $"Base directory: {baseDir}");
+        DebugLogger.Log("VstHostService", $"Jacobi.Vst.Host.Interop.dll exists: {File.Exists(interopPath)}");
+        DebugLogger.Log("VstHostService", $"Jacobi.Vst.Core.dll exists: {File.Exists(corePath)}");
+        DebugLogger.Log("VstHostService", $"Ijwhost.dll exists: {File.Exists(ijwhostPath)}");
+
+        if (!File.Exists(interopPath))
+            throw new FileNotFoundException("Jacobi.Vst.Host.Interop.dll not found", interopPath);
+        if (!File.Exists(corePath))
+            throw new FileNotFoundException("Jacobi.Vst.Core.dll not found", corePath);
+        if (!File.Exists(ijwhostPath))
+            throw new FileNotFoundException("Ijwhost.dll not found - required for C++/CLI assemblies", ijwhostPath);
+
+        var resolvedPluginPath = ResolvePluginPath(pluginPath);
+        DebugLogger.Log("VstHostService", $"Resolved plugin path: {resolvedPluginPath}");
+        DebugLogger.Log("VstHostService", $"Plugin file exists: {File.Exists(resolvedPluginPath)}");
+
+        if (!File.Exists(resolvedPluginPath))
+            throw new FileNotFoundException($"VST plugin not found: {resolvedPluginPath}", resolvedPluginPath);
+
+        // Now call the actual loader (in a separate method to control JIT timing)
+        return LoadPluginInternal(resolvedPluginPath);
+    }
+
+    // Separate method to isolate Jacobi type references
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private VstPluginInstance? LoadPluginInternal(string resolvedPath)
+    {
         try
         {
+            DebugLogger.Log("VstHostService", $"LoadPluginInternal - Creating HostCommandStub...");
             var hostStub = new HostCommandStub();
+
+            DebugLogger.Log("VstHostService", $"Creating VstPluginContext for: {resolvedPath}");
             var context = VstPluginContext.Create(resolvedPath, hostStub);
+            DebugLogger.Log("VstHostService", $"VstPluginContext created successfully");
+
             hostStub.PluginContext = context;
 
+            DebugLogger.Log("VstHostService", $"Opening plugin...");
             context.PluginCommandStub.Commands.Open();
+            DebugLogger.Log("VstHostService", $"Plugin opened successfully");
 
+            DebugLogger.Log("VstHostService", $"Creating VstPluginInstance...");
             var instance = new VstPluginInstance(context, hostStub, resolvedPath);
+            DebugLogger.Log("VstHostService", $"VstPluginInstance created successfully");
 
             lock (_lock)
             {
                 _loadedPlugins.Add(instance);
             }
 
-            System.Diagnostics.Debug.WriteLine($"Loaded VST plugin: {resolvedPath}");
+            DebugLogger.Log("VstHostService", $"Loaded VST plugin successfully: {resolvedPath}");
             return instance;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Failed to load VST plugin {resolvedPath}: {ex.Message}");
-            return null;
+            DebugLogger.Log("VstHostService", $"EXCEPTION in LoadPluginInternal: {ex.GetType().Name}: {ex.Message}");
+            DebugLogger.Log("VstHostService", $"Stack trace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                DebugLogger.Log("VstHostService", $"Inner exception: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+            }
+            throw;
         }
     }
 
@@ -61,19 +104,34 @@ public class VstHostService : IVstHostService
 
     public VstPluginInstance? LoadPlugin(VstPluginConfig config)
     {
-        var instance = LoadPlugin(config.PluginPath);
+        DebugLogger.Log("VstHostService", $"LoadPlugin(config) called for: {config.PluginPath}");
 
-        if (instance != null && config.PresetData != null)
+        try
         {
-            instance.SetPresetData(config.PresetData);
-        }
+            DebugLogger.Log("VstHostService", $"About to call LoadPlugin(string) with: {config.PluginPath}");
+            var instance = LoadPlugin(config.PluginPath);
+            DebugLogger.Log("VstHostService", $"LoadPlugin(string) returned: {(instance != null ? "instance" : "null")}");
 
-        if (instance != null)
+            if (instance != null && config.PresetData != null)
+            {
+                DebugLogger.Log("VstHostService", $"Setting preset data for: {config.PluginPath}");
+                instance.SetPresetData(config.PresetData);
+            }
+
+            if (instance != null)
+            {
+                instance.IsBypassed = config.IsBypassed;
+                DebugLogger.Log("VstHostService", $"Plugin loaded, bypassed: {config.IsBypassed}");
+            }
+
+            return instance;
+        }
+        catch (Exception ex)
         {
-            instance.IsBypassed = config.IsBypassed;
+            DebugLogger.Log("VstHostService", $"EXCEPTION in LoadPlugin(config): {ex.GetType().Name}: {ex.Message}");
+            DebugLogger.Log("VstHostService", $"Stack trace: {ex.StackTrace}");
+            throw;
         }
-
-        return instance;
     }
 
     public void UnloadPlugin(VstPluginInstance plugin)

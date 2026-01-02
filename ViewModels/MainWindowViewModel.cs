@@ -631,10 +631,17 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         if (runResult != MessageBoxResult.Yes)
             return;
 
-        // Launch installer and exit
+        // Launch installer and exit (bypass minimize-to-tray prompt)
         if (_autoUpdateService.LaunchInstaller(downloadPath))
         {
-            Application.Current.Shutdown();
+            if (Application.Current.MainWindow is MainWindow mainWindow)
+            {
+                mainWindow.ForceClose();
+            }
+            else
+            {
+                Application.Current.Shutdown();
+            }
         }
         else
         {
@@ -702,7 +709,14 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         if (_autoUpdateService.LaunchInstaller(downloadPath))
         {
-            Application.Current.Shutdown();
+            if (Application.Current.MainWindow is MainWindow mainWindow)
+            {
+                mainWindow.ForceClose();
+            }
+            else
+            {
+                Application.Current.Shutdown();
+            }
         }
     }
 
