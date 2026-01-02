@@ -14,24 +14,26 @@ Write-Host "Audio Processor And Streamer - Build" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Step 1: Build the project
+# Step 1: Publish the project (creates self-contained deployment in publish folder)
 if (-not $SkipBuild) {
-    Write-Host "[1/2] Building Release configuration..." -ForegroundColor Yellow
+    Write-Host "[1/2] Publishing Release configuration..." -ForegroundColor Yellow
 
     Push-Location $ScriptDir
     try {
-        dotnet build -c Release -p:Platform=x64
+        # Use dotnet publish to create self-contained deployment
+        # Installer.iss expects files in bin\x64\Release\net8.0-windows\win-x64\publish
+        dotnet publish -c Release -p:Platform=x64
         if ($LASTEXITCODE -ne 0) {
-            throw "Build failed with exit code $LASTEXITCODE"
+            throw "Publish failed with exit code $LASTEXITCODE"
         }
-        Write-Host "Build completed successfully!" -ForegroundColor Green
+        Write-Host "Publish completed successfully!" -ForegroundColor Green
     }
     finally {
         Pop-Location
     }
 }
 else {
-    Write-Host "[1/2] Skipping build (using existing Release build)" -ForegroundColor Gray
+    Write-Host "[1/2] Skipping publish (using existing Release publish)" -ForegroundColor Gray
 }
 
 Write-Host ""

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
 using System.Collections.Concurrent;
+using AudioProcessorAndStreamer.Infrastructure;
 using AudioProcessorAndStreamer.Models;
 using AudioProcessorAndStreamer.Services.Streaming;
 using Microsoft.AspNetCore.Builder;
@@ -181,7 +182,13 @@ public class HlsWebServer : IAsyncDisposable
 
     public async Task StartAsync()
     {
-        if (_isRunning) return;
+        if (_isRunning)
+        {
+            DebugLogger.Log("HlsWebServer", "StartAsync called but already running");
+            return;
+        }
+
+        DebugLogger.Log("HlsWebServer", $"StartAsync - Port from config: {_config.WebServerPort}, Port property: {Port}");
 
         // Ensure HLS directory exists
         Directory.CreateDirectory(_hlsDirectory);
@@ -191,6 +198,7 @@ public class HlsWebServer : IAsyncDisposable
         // Re-resolve HLS directory in case config changed
         _hlsDirectory = ResolveHlsOutputDirectory(_config.HlsOutputDirectory);
 
+        DebugLogger.Log("HlsWebServer", $"Configuring Kestrel to listen on port {Port}");
         builder.WebHost.ConfigureKestrel(options =>
         {
             options.ListenAnyIP(Port);
@@ -377,7 +385,13 @@ public class HlsWebServer : IAsyncDisposable
 
     public async Task StopAsync()
     {
-        if (!_isRunning || _app == null) return;
+        DebugLogger.Log("HlsWebServer", $"StopAsync called - _isRunning: {_isRunning}, _app null: {_app == null}");
+
+        if (!_isRunning || _app == null)
+        {
+            DebugLogger.Log("HlsWebServer", "StopAsync - not running or app is null, returning");
+            return;
+        }
 
         try
         {
@@ -389,11 +403,19 @@ public class HlsWebServer : IAsyncDisposable
             _streamListeners.Clear();
             ListenerCountChanged?.Invoke(this, EventArgs.Empty);
 
+            DebugLogger.Log("HlsWebServer", "Stopping web application...");
             await _app.StopAsync();
+            DebugLogger.Log("HlsWebServer", "Web application stopped");
+
+            // Dispose the app to release the port
+            await _app.DisposeAsync();
+            _app = null;
+            DebugLogger.Log("HlsWebServer", "Web application disposed");
         }
         finally
         {
             _isRunning = false;
+            DebugLogger.Log("HlsWebServer", "StopAsync complete - _isRunning set to false");
         }
     }
 

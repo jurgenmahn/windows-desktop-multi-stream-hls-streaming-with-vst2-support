@@ -203,17 +203,26 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task StartServerAsync()
     {
-        if (IsServerRunning) return;
+        DebugLogger.Log("MainWindowViewModel", $"StartServerAsync called - IsServerRunning: {IsServerRunning}");
+
+        if (IsServerRunning)
+        {
+            DebugLogger.Log("MainWindowViewModel", "Server already running, returning");
+            return;
+        }
 
         try
         {
+            DebugLogger.Log("MainWindowViewModel", $"Starting web server - config port: {_config.WebServerPort}");
             await _webServer.StartAsync();
             IsServerRunning = true;
             ServerUrl = $"{_webServer.BaseUrl}{_config.StreamsPagePath}";
             ServerStatus = $"Server running on port {_webServer.Port}";
+            DebugLogger.Log("MainWindowViewModel", $"Server started - ServerStatus: {ServerStatus}");
         }
         catch (Exception ex)
         {
+            DebugLogger.Log("MainWindowViewModel", $"Server start failed: {ex.Message}");
             ServerStatus = $"Server failed: {ex.Message}";
             MessageBox.Show($"Failed to start web server: {ex.Message}", "Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
@@ -223,12 +232,19 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task StopServerAsync()
     {
-        if (!IsServerRunning) return;
+        DebugLogger.Log("MainWindowViewModel", $"StopServerAsync called - IsServerRunning: {IsServerRunning}");
+
+        if (!IsServerRunning)
+        {
+            DebugLogger.Log("MainWindowViewModel", "Server not running, returning");
+            return;
+        }
 
         await _webServer.StopAsync();
         IsServerRunning = false;
         ServerUrl = string.Empty;
         ServerStatus = "Server stopped";
+        DebugLogger.Log("MainWindowViewModel", "Server stopped successfully");
     }
 
     [RelayCommand]
@@ -326,6 +342,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             // Update app config
             if (dialog.ResultConfiguration != null)
             {
+                DebugLogger.Log("MainWindowViewModel", $"Updating config - old port: {_config.WebServerPort}, new port: {dialog.ResultConfiguration.WebServerPort}");
                 _config.BaseDomain = dialog.ResultConfiguration.BaseDomain;
                 _config.WebServerPort = dialog.ResultConfiguration.WebServerPort;
                 _config.HlsOutputDirectory = dialog.ResultConfiguration.HlsOutputDirectory;
@@ -335,6 +352,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 _config.MonitorOutputDevice = dialog.ResultConfiguration.MonitorOutputDevice;
                 _config.HlsSegmentDuration = dialog.ResultConfiguration.HlsSegmentDuration;
                 _config.HlsPlaylistSize = dialog.ResultConfiguration.HlsPlaylistSize;
+                DebugLogger.Log("MainWindowViewModel", $"Config updated - _config.WebServerPort is now: {_config.WebServerPort}");
                 SaveAppConfig();
 
                 // Update monitor output device immediately
@@ -388,8 +406,11 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             // Restart server if it was running (stop first to apply new port/config)
             if (wasServerRunning)
             {
+                DebugLogger.Log("MainWindowViewModel", $"Restarting server - config port: {_config.WebServerPort}");
                 await StopServerAsync();
+                DebugLogger.Log("MainWindowViewModel", "Server stopped, now starting with new config...");
                 await StartServerAsync();
+                DebugLogger.Log("MainWindowViewModel", $"Server restarted - ServerStatus: {ServerStatus}");
             }
 
             // Restart streams one by one with delays

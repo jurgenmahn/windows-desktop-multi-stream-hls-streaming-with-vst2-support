@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private bool _closeToTrayPreference;
     private bool _minimizePreferenceSet;
     private bool _closePreferenceSet;
+    private bool _minimizingFromClose; // Flag to prevent double prompt
 
     public MainWindow()
     {
@@ -176,7 +177,15 @@ public partial class MainWindow : Window
 
         if (WindowState == WindowState.Minimized)
         {
-            DebugLogger.Log("MainWindow", $"Window minimized - _minimizePreferenceSet: {_minimizePreferenceSet}, _minimizeToTrayPreference: {_minimizeToTrayPreference}");
+            DebugLogger.Log("MainWindow", $"Window minimized - _minimizePreferenceSet: {_minimizePreferenceSet}, _minimizeToTrayPreference: {_minimizeToTrayPreference}, _minimizingFromClose: {_minimizingFromClose}");
+
+            // If this minimize was triggered from OnClosing, skip the prompt and just minimize to tray
+            if (_minimizingFromClose)
+            {
+                _minimizingFromClose = false;
+                MinimizeToTray();
+                return;
+            }
 
             // Ask user what they want to do (unless preference already set)
             if (!_minimizePreferenceSet)
@@ -275,8 +284,9 @@ public partial class MainWindow : Window
             if (_closeToTrayPreference)
             {
                 e.Cancel = true;
+                _minimizingFromClose = true; // Prevent OnStateChanged from showing another prompt
                 WindowState = WindowState.Minimized;
-                MinimizeToTray();
+                // MinimizeToTray will be called by OnStateChanged
                 return;
             }
         }
