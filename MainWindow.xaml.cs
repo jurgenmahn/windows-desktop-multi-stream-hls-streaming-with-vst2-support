@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using AudioProcessorAndStreamer.Controls;
+using AudioProcessorAndStreamer.Infrastructure;
 using AudioProcessorAndStreamer.ViewModels;
 using Forms = System.Windows.Forms;
 
@@ -21,11 +22,17 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        DebugLogger.Log("MainWindow", "Constructor started");
         InitializeComponent();
+        DebugLogger.Log("MainWindow", "InitializeComponent() completed");
+
         Closing += OnClosing;
         Loaded += OnLoaded;
         StateChanged += OnStateChanged;
+        DebugLogger.Log("MainWindow", "Event handlers subscribed");
+
         InitializeNotifyIcon();
+        DebugLogger.Log("MainWindow", "InitializeNotifyIcon() completed");
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -154,8 +161,12 @@ public partial class MainWindow : Window
 
     private void OnStateChanged(object? sender, EventArgs e)
     {
+        DebugLogger.Log("MainWindow", $"OnStateChanged - WindowState: {WindowState}");
+
         if (WindowState == WindowState.Minimized)
         {
+            DebugLogger.Log("MainWindow", $"Window minimized - _minimizePreferenceSet: {_minimizePreferenceSet}, _minimizeToTrayPreference: {_minimizeToTrayPreference}");
+
             // Ask user what they want to do (unless preference already set)
             if (!_minimizePreferenceSet)
             {
@@ -181,6 +192,7 @@ public partial class MainWindow : Window
 
     private void MinimizeToTray()
     {
+        DebugLogger.Log("MainWindow", "MinimizeToTray() called");
         Hide();
         if (_notifyIcon != null)
         {
@@ -188,6 +200,11 @@ public partial class MainWindow : Window
             _notifyIcon.ShowBalloonTip(2000, "Audio Processor And Streamer",
                 "Application minimized to system tray. Double-click to restore.",
                 Forms.ToolTipIcon.Info);
+            DebugLogger.Log("MainWindow", "Window hidden, notify icon visible");
+        }
+        else
+        {
+            DebugLogger.Log("MainWindow", "WARNING: _notifyIcon is null!");
         }
     }
 
@@ -216,6 +233,8 @@ public partial class MainWindow : Window
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        DebugLogger.Log("MainWindow", $"OnClosing - _isExiting: {_isExiting}, _closePreferenceSet: {_closePreferenceSet}, _closeToTrayPreference: {_closeToTrayPreference}");
+
         // If we're already exiting (from tray menu), don't show prompt
         if (!_isExiting)
         {

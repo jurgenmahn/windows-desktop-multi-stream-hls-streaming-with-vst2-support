@@ -1,6 +1,7 @@
 using System.Windows;
 using Application = System.Windows.Application;
 using AudioProcessorAndStreamer.Controls;
+using AudioProcessorAndStreamer.Infrastructure;
 using AudioProcessorAndStreamer.Models;
 using AudioProcessorAndStreamer.Services.Audio;
 using AudioProcessorAndStreamer.Services.Streaming;
@@ -148,12 +149,21 @@ public partial class StreamViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void Start()
     {
-        if (IsRunning) return;
+        DebugLogger.Log("StreamViewModel", $"Start() called for '{_config.Name}'");
 
+        if (IsRunning)
+        {
+            DebugLogger.Log("StreamViewModel", $"'{_config.Name}' already running - ignoring Start()");
+            return;
+        }
+
+        DebugLogger.Log("StreamViewModel", $"'{_config.Name}' - stopping input monitoring");
         // Stop input monitoring - stream processor will take over
         StopInputMonitoring();
 
+        DebugLogger.Log("StreamViewModel", $"'{_config.Name}' - calling _streamManager.StartStream()");
         _processor = _streamManager.StartStream(_config);
+        DebugLogger.Log("StreamViewModel", $"'{_config.Name}' - _streamManager.StartStream() returned: {(_processor != null ? "processor" : "null")}");
 
         if (_processor != null)
         {

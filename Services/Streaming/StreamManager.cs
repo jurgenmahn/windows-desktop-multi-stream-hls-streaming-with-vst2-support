@@ -1,4 +1,5 @@
 using System.IO;
+using AudioProcessorAndStreamer.Infrastructure;
 using AudioProcessorAndStreamer.Models;
 using AudioProcessorAndStreamer.Services.Encoding;
 using AudioProcessorAndStreamer.Services.Vst;
@@ -62,17 +63,23 @@ public class StreamManager : IStreamManager
 
     public AudioStreamProcessor? StartStream(StreamConfiguration config)
     {
+        DebugLogger.Log("StreamManager", $"StartStream() called for '{config.Name}' (ID: {config.Id})");
+
         lock (_lock)
         {
             if (_activeStreams.ContainsKey(config.Id))
             {
+                DebugLogger.Log("StreamManager", $"'{config.Name}' already in active streams - returning existing processor");
                 return _activeStreams[config.Id];
             }
         }
 
+        DebugLogger.Log("StreamManager", $"'{config.Name}' - creating new AudioStreamProcessor");
+
         try
         {
             var hlsOutputDir = ResolveHlsOutputDirectory(_config.HlsOutputDirectory);
+            DebugLogger.Log("StreamManager", $"'{config.Name}' - HLS output dir: {hlsOutputDir}");
 
             var processor = new AudioStreamProcessor(
                 config,
