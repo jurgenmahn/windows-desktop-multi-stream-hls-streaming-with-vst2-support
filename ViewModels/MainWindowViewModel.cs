@@ -5,7 +5,9 @@ using AudioProcessorAndStreamer.Views;
 using System.Windows;
 using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
+using AudioProcessorAndStreamer.Infrastructure;
 using AudioProcessorAndStreamer.Models;
+using AudioProcessorAndStreamer.Services;
 using AudioProcessorAndStreamer.Services.Audio;
 using AudioProcessorAndStreamer.Services.Streaming;
 using AudioProcessorAndStreamer.Services.Web;
@@ -23,6 +25,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly HlsWebServer _webServer;
     private readonly IMonitorOutputService _monitorService;
     private readonly AppConfiguration _config;
+    private readonly AutoUpdateService _autoUpdateService;
     private readonly string _configPath;
     private readonly string _appConfigPath;
     private bool _disposed;
@@ -55,6 +58,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _webServer = webServer;
         _monitorService = monitorService;
         _config = config.Value;
+        _autoUpdateService = new AutoUpdateService();
 
         // Use LocalApplicationData for user config files (writable, per-user)
         var appDataDir = Path.Combine(
@@ -542,6 +546,142 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             MessageBox.Show($"Failed to export configuration: {ex.Message}", "Export Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task CheckForUpdatesAsync()
+    {
+        DebugLogger.Log("MainWindowViewModel", "Checking for updates...");
+
+        var updateInfo = await _autoUpdateService.CheckForUpdateAsync();
+
+        if (updateInfo == null)
+        {
+            MessageBox.Show(
+                $"You are running the latest version ({_autoUpdateService.CurrentVersion}).",
+                "No Updates Available",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        // Build the message with optional release notes
+        var message = $"A new version is available!\n\n" +
+                      $"Current version: {_autoUpdateService.CurrentVersion}\n" +
+                      $"New version: {updateInfo.Version}\n";
+
+        if (!string.IsNullOrEmpty(updateInfo.ReleaseNotes))
+        {
+            message += $"\nRelease notes:\n{updateInfo.ReleaseNotes}\n";
+        }
+
+        message += "\nWould you like to download and install the update now?";
+
+        var result = MessageBox.Show(
+            message,
+            "Update Available",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (result != MessageBoxResult.Yes)
+            return;
+
+        // Download the update
+        var downloadPath = await _autoUpdateService.DownloadUpdateAsync(updateInfo);
+
+        if (downloadPath == null)
+        {
+            MessageBox.Show(
+                "Failed to download the update. Please try again later or download manually.",
+                "Download Failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            return;
+        }
+
+        // Ask to run the installer
+        var runResult = MessageBox.Show(
+            "Update downloaded successfully!\n\nThe application will close and the installer will start.\n\nContinue?",
+            "Install Update",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (runResult != MessageBoxResult.Yes)
+            return;
+
+        // Launch installer and exit
+        if (_autoUpdateService.LaunchInstaller(downloadPath))
+        {
+            Application.Current.Shutdown();
+        }
+        else
+        {
+            MessageBox.Show(
+                $"Failed to start the installer.\n\nYou can run it manually from:\n{downloadPath}",
+                "Installer Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>
+    /// Checks for updates silently on startup - only notifies if update is available.
+    /// </summary>
+    public async Task CheckForUpdatesSilentAsync()
+    {
+        DebugLogger.Log("MainWindowViewModel", "Silent update check on startup...");
+
+        var updateInfo = await _autoUpdateService.CheckForUpdateAsync();
+
+        if (updateInfo == null)
+            return;
+
+        // Build the message with optional release notes
+        var message = $"A new version ({updateInfo.Version}) is available!\n\n" +
+                      $"Current version: {_autoUpdateService.CurrentVersion}\n";
+
+        if (!string.IsNullOrEmpty(updateInfo.ReleaseNotes))
+        {
+            message += $"\nRelease notes:\n{updateInfo.ReleaseNotes}\n";
+        }
+
+        message += "\nWould you like to download and install the update now?";
+
+        var result = MessageBox.Show(
+            message,
+            "Update Available",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (result != MessageBoxResult.Yes)
+            return;
+
+        // Download and install
+        var downloadPath = await _autoUpdateService.DownloadUpdateAsync(updateInfo);
+
+        if (downloadPath == null)
+        {
+            MessageBox.Show(
+                "Failed to download the update. Please try again later.",
+                "Download Failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            return;
+        }
+
+        var runResult = MessageBox.Show(
+            "Update downloaded successfully!\n\nThe application will close and the installer will start.\n\nContinue?",
+            "Install Update",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (runResult != MessageBoxResult.Yes)
+            return;
+
+        if (_autoUpdateService.LaunchInstaller(downloadPath))
+        {
+            Application.Current.Shutdown();
         }
     }
 

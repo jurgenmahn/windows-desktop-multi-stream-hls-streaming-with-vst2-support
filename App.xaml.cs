@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using Application = System.Windows.Application;
+using AudioProcessorAndStreamer.Infrastructure;
 using AudioProcessorAndStreamer.Models;
 using AudioProcessorAndStreamer.Services.Audio;
 using AudioProcessorAndStreamer.Services.Encoding;
@@ -22,6 +23,25 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Set up global exception handlers
+        AppDomain.CurrentDomain.UnhandledException += (s, args) =>
+        {
+            var ex = args.ExceptionObject as Exception;
+            DebugLogger.Log("FATAL", $"Unhandled exception: {ex?.Message}\n{ex?.StackTrace}");
+        };
+
+        DispatcherUnhandledException += (s, args) =>
+        {
+            DebugLogger.Log("FATAL", $"Dispatcher exception: {args.Exception.Message}\n{args.Exception.StackTrace}");
+            args.Handled = true; // Prevent crash for debugging
+        };
+
+        // Initialize debug logger first
+        DebugLogger.Initialize();
+        DebugLogger.Log("App", "=== Application Starting ===");
+        DebugLogger.Log("App", $"Base directory: {AppDomain.CurrentDomain.BaseDirectory}");
+        DebugLogger.Log("App", $"Log file location: {DebugLogger.LogPath}");
 
         _host = Host.CreateDefaultBuilder()
             .ConfigureAppConfiguration((context, config) =>
@@ -59,12 +79,18 @@ public partial class App : Application
             })
             .Build();
 
+        DebugLogger.Log("App", "Host built, starting...");
         await _host.StartAsync();
+        DebugLogger.Log("App", "Host started");
 
         // Create and show main window
+        DebugLogger.Log("App", "Creating MainWindow...");
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        DebugLogger.Log("App", "MainWindow created, setting DataContext...");
         mainWindow.DataContext = _host.Services.GetRequiredService<MainWindowViewModel>();
+        DebugLogger.Log("App", "DataContext set, showing window...");
         mainWindow.Show();
+        DebugLogger.Log("App", "MainWindow shown");
     }
 
     protected override async void OnExit(ExitEventArgs e)

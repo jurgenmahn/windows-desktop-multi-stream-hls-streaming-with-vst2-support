@@ -71,12 +71,23 @@ public partial class MainWindow : Window
         // Small delay ensures all StreamItem_Loaded events have completed
         await Task.Delay(500);
 
-        System.Diagnostics.Debug.WriteLine("[MainWindow] Auto-starting server and streams...");
+        DebugLogger.Log("MainWindow", "Auto-starting server and streams...");
 
         if (DataContext is ViewModels.MainWindowViewModel vm)
         {
             await vm.StartServerCommand.ExecuteAsync(null);
             vm.StartAllStreamsCommand.Execute(null);
+
+            // Check for updates silently in the background (after startup completes)
+            _ = Task.Run(async () =>
+            {
+                // Wait a bit more before checking for updates to not interfere with startup
+                await Task.Delay(2000);
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(async () =>
+                {
+                    await vm.CheckForUpdatesSilentAsync();
+                });
+            });
         }
     }
 

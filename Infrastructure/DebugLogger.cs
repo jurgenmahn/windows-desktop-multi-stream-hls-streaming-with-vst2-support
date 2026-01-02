@@ -9,30 +9,65 @@ namespace AudioProcessorAndStreamer.Infrastructure;
 /// </summary>
 public static class DebugLogger
 {
-    private static readonly string LogPath;
+    private static string? _logPath;
     private static readonly object Lock = new();
+    private static bool _initialized;
 
-    static DebugLogger()
+    public static string LogPath => _logPath ?? GetDefaultLogPath();
+
+    private static string GetDefaultLogPath()
     {
         var appDataDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "AudioProcessorAndStreamer");
-        Directory.CreateDirectory(appDataDir);
-        LogPath = Path.Combine(appDataDir, "debug.log");
+        return Path.Combine(appDataDir, "debug.log");
+    }
 
-        // Clear log on startup
+    /// <summary>
+    /// Explicitly initialize the logger. Call this early in app startup.
+    /// </summary>
+    public static void Initialize()
+    {
+        if (_initialized) return;
+
         try
         {
-            File.WriteAllText(LogPath, $"=== AudioProcessorAndStreamer Debug Log - {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===\n\n");
+            var appDataDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "AudioProcessorAndStreamer");
+            Directory.CreateDirectory(appDataDir);
+            _logPath = Path.Combine(appDataDir, "debug.log");
+
+            // Clear log on startup
+            File.WriteAllText(_logPath, $"=== AudioProcessorAndStreamer Debug Log - {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===\n");
+            File.AppendAllText(_logPath, $"Log file: {_logPath}\n\n");
+
+            _initialized = true;
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore if we can't write
+            // Try writing to temp folder as fallback
+            try
+            {
+                _logPath = Path.Combine(Path.GetTempPath(), "AudioProcessorAndStreamer_debug.log");
+                File.WriteAllText(_logPath, $"=== AudioProcessorAndStreamer Debug Log (FALLBACK) - {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===\n");
+                File.AppendAllText(_logPath, $"Original error: {ex.Message}\n");
+                File.AppendAllText(_logPath, $"Log file: {_logPath}\n\n");
+                _initialized = true;
+            }
+            catch
+            {
+                // Can't write anywhere - give up silently
+                _initialized = true;
+            }
         }
     }
 
     public static void Log(string message)
     {
+        // Auto-initialize if not done yet
+        if (!_initialized) Initialize();
+
         var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
         var logLine = $"[{timestamp}] {message}";
 
@@ -40,15 +75,18 @@ public static class DebugLogger
         System.Diagnostics.Debug.WriteLine(logLine);
 
         // Write to file
-        lock (Lock)
+        if (_logPath != null)
         {
-            try
+            lock (Lock)
             {
-                File.AppendAllText(LogPath, logLine + "\n");
-            }
-            catch
-            {
-                // Ignore if we can't write
+                try
+                {
+                    File.AppendAllText(_logPath, logLine + "\n");
+                }
+                catch
+                {
+                    // Ignore if we can't write
+                }
             }
         }
     }

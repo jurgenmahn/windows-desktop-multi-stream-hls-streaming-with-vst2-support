@@ -99,7 +99,11 @@
                     <MenuItem Header="E_xit" Command="{Binding ExitCommand}"/>
                 </MenuItem>
                 <MenuItem Header="_Configuration" Command="{Binding OpenConfigurationCommand}"/>
-                <MenuItem Header="_About" Command="{Binding OpenAboutCommand}"/>
+                <MenuItem Header="_Help">
+                    <MenuItem Header="_Check for Updates..." Command="{Binding CheckForUpdatesCommand}"/>
+                    <Separator/>
+                    <MenuItem Header="_About" Command="{Binding OpenAboutCommand}"/>
+                </MenuItem>
             </Menu>
         </Border>
 
