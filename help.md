@@ -490,3 +490,4 @@ Sample Rate: 48000 Hz
 1. Controleer of het audio invoer apparaat correct is geselecteerd
 2. Controleer of FFmpeg correct is geïnstalleerd (in `FFmpeg/bin/` map)
 3. Controleer de webserver poort (niet al in gebruik door andere software)
+
