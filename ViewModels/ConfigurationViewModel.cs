@@ -167,7 +167,8 @@ public partial class ConfigurationViewModel : ObservableObject
             {
                 new EncodingProfile { Name = "64kbps AAC", Codec = AudioCodec.Aac, Bitrate = 64000 },
                 new EncodingProfile { Name = "128kbps AAC", Codec = AudioCodec.Aac, Bitrate = 128000 },
-                new EncodingProfile { Name = "192kbps AAC", Codec = AudioCodec.Aac, Bitrate = 192000 }
+                new EncodingProfile { Name = "192kbps AAC", Codec = AudioCodec.Aac, Bitrate = 192000 },
+                new EncodingProfile { Name = "256kbps AAC", Codec = AudioCodec.Aac, Bitrate = 256000 }
             }
         };
 

@@ -198,7 +198,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             await _webServer.StartAsync();
             IsServerRunning = true;
-            ServerUrl = $"{_webServer.BaseUrl}/hls/";
+            ServerUrl = $"{_webServer.BaseUrl}{_config.StreamsPagePath}";
             ServerStatus = $"Server running on port {_webServer.Port}";
         }
         catch (Exception ex)
@@ -218,6 +218,25 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         IsServerRunning = false;
         ServerUrl = string.Empty;
         ServerStatus = "Server stopped";
+    }
+
+    [RelayCommand]
+    private void OpenServerUrl()
+    {
+        if (string.IsNullOrEmpty(ServerUrl)) return;
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = ServerUrl,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to open URL: {ex.Message}");
+        }
     }
 
     [RelayCommand]
@@ -257,7 +276,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             {
                 new EncodingProfile { Name = "64kbps AAC", Codec = AudioCodec.Aac, Bitrate = 64000 },
                 new EncodingProfile { Name = "128kbps AAC", Codec = AudioCodec.Aac, Bitrate = 128000 },
-                new EncodingProfile { Name = "192kbps AAC", Codec = AudioCodec.Aac, Bitrate = 192000 }
+                new EncodingProfile { Name = "192kbps AAC", Codec = AudioCodec.Aac, Bitrate = 192000 },
+                new EncodingProfile { Name = "256kbps AAC", Codec = AudioCodec.Aac, Bitrate = 256000 }
             }
         };
 

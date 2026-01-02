@@ -1,7 +1,7 @@
 ; Inno Setup Script for Audio Processor And Streamer
 ; To build this installer, run: build-installer.bat
 ; Or manually:
-;   1. dotnet build -c Release -p:Platform=x64
+;   1. dotnet publish -c Release -p:Platform=x64
 ;   2. Open this file with Inno Setup Compiler and press F9
 
 #define MyAppName "Audio Processor And Streamer"
@@ -10,8 +10,8 @@
 #define MyAppExeName "AudioProcessorAndStreamer.exe"
 #define MyAppURL ""
 
-; Path to the build output
-#define BuildOutput "bin\x64\Release\net8.0-windows\win-x64"
+; Path to the publish output (self-contained single-file)
+#define BuildOutput "bin\x64\Release\net8.0-windows\win-x64\publish"
 
 [Setup]
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
@@ -38,11 +38,12 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-; Main application files
+; Main application (single-file exe with .NET runtime bundled)
 Source: "{#BuildOutput}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#BuildOutput}\*.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#BuildOutput}\*.runtimeconfig.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#BuildOutput}\*.deps.json"; DestDir: "{app}"; Flags: ignoreversion
+
+; Native DLLs that can't be bundled (if any exist)
+Source: "{#BuildOutput}\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+
 ; Config file - don't overwrite if user modified it
 Source: "{#BuildOutput}\appsettings.json"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist
 

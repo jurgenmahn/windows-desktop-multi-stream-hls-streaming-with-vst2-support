@@ -104,7 +104,7 @@ public partial class ConfigurationDialog : Window
         }
         else
         {
-            _viewModel.HlsSegmentDuration = 4; // Default value
+            _viewModel.HlsSegmentDuration = 2; // Default value
         }
         SegmentDurationTextBox.Text = _viewModel.HlsSegmentDuration.ToString();
     }

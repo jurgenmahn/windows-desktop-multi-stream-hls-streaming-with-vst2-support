@@ -37,7 +37,7 @@ public class AppConfiguration
     /// <summary>
     /// Duration of each HLS segment in seconds. Lower values reduce latency but increase overhead.
     /// </summary>
-    public int HlsSegmentDuration { get; set; } = 4;
+    public int HlsSegmentDuration { get; set; } = 2;
 
     /// <summary>
     /// Number of segments to keep in the HLS playlist (history). Higher values allow more rewind capability.

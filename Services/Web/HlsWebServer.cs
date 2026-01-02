@@ -315,6 +315,22 @@ public class HlsWebServer : IAsyncDisposable
         // Health check endpoint
         _app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
+        // Serve logo from Assets folder
+        _app.MapGet("/assets/logo.png", async context =>
+        {
+            var logoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "logo.png");
+            if (File.Exists(logoPath))
+            {
+                context.Response.ContentType = "image/png";
+                context.Response.Headers.Append("Cache-Control", "public, max-age=86400");
+                await context.Response.SendFileAsync(logoPath);
+            }
+            else
+            {
+                context.Response.StatusCode = 404;
+            }
+        });
+
         try
         {
             await _app.StartAsync();
@@ -373,46 +389,58 @@ public class HlsWebServer : IAsyncDisposable
         sb.AppendLine("<head>");
         sb.AppendLine("  <meta charset=\"UTF-8\">");
         sb.AppendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
-        sb.AppendLine("  <title>Streams</title>");
+        sb.AppendLine("  <title>Audio Streams</title>");
         sb.AppendLine("  <script src=\"https://cdn.jsdelivr.net/npm/hls.js@latest\"></script>");
         sb.AppendLine("  <script src=\"https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js\"></script>");
         sb.AppendLine("  <style>");
         sb.AppendLine("    * { box-sizing: border-box; margin: 0; padding: 0; }");
-        sb.AppendLine("    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }");
+        sb.AppendLine("    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #e8f4fc 0%, #d1e8f5 100%); min-height: 100vh; padding: 24px; }");
+        sb.AppendLine("    .page-header { text-align: center; margin-bottom: 32px; }");
+        sb.AppendLine("    .page-logo { max-height: 80px; margin-bottom: 12px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }");
+        sb.AppendLine("    .page-title { font-size: 28px; font-weight: 700; color: #1a5276; margin-bottom: 4px; }");
+        sb.AppendLine("    .page-subtitle { font-size: 14px; color: #5d6d7e; }");
         sb.AppendLine("    .streams { display: grid; gap: 16px; max-width: 800px; margin: 0 auto; }");
-        sb.AppendLine("    .stream { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }");
+        sb.AppendLine("    .stream { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid rgba(255,255,255,0.8); transition: transform 0.2s, box-shadow 0.2s; }");
+        sb.AppendLine("    .stream:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }");
         sb.AppendLine("    .stream-header { display: flex; align-items: center; gap: 16px; }");
-        sb.AppendLine("    .stream-logo { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; background: #e0e0e0; display: flex; align-items: center; justify-content: center; color: #999; font-size: 24px; flex-shrink: 0; }");
-        sb.AppendLine("    .stream-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }");
+        sb.AppendLine("    .stream-logo { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; flex-shrink: 0; box-shadow: 0 2px 8px rgba(102,126,234,0.3); }");
+        sb.AppendLine("    .stream-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }");
         sb.AppendLine("    .stream-info { flex: 1; min-width: 0; }");
-        sb.AppendLine("    .stream-name { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 4px; }");
+        sb.AppendLine("    .stream-name { font-size: 18px; font-weight: 600; color: #2c3e50; margin-bottom: 6px; }");
         sb.AppendLine("    .stream-profiles { font-size: 12px; color: #666; }");
-        sb.AppendLine("    .profile-badge { display: inline-block; background: #e3f2fd; color: #1976d2; padding: 2px 8px; border-radius: 4px; margin-right: 4px; margin-top: 4px; }");
-        sb.AppendLine("    .format-badge { display: inline-block; background: #fff3e0; color: #e65100; padding: 2px 8px; border-radius: 4px; margin-right: 4px; margin-top: 4px; font-weight: 500; }");
-        sb.AppendLine("    .container-badge { display: inline-block; background: #f3e5f5; color: #7b1fa2; padding: 2px 8px; border-radius: 4px; margin-right: 4px; margin-top: 4px; }");
+        sb.AppendLine("    .profile-badge { display: inline-block; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); color: #1565c0; padding: 3px 10px; border-radius: 20px; margin-right: 4px; margin-top: 4px; font-weight: 500; }");
+        sb.AppendLine("    .format-badge { display: inline-block; background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); color: #e65100; padding: 3px 10px; border-radius: 20px; margin-right: 4px; margin-top: 4px; font-weight: 600; }");
+        sb.AppendLine("    .container-badge { display: inline-block; background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); color: #7b1fa2; padding: 3px 10px; border-radius: 20px; margin-right: 4px; margin-top: 4px; font-weight: 500; }");
         sb.AppendLine("    .stream-actions { display: flex; gap: 8px; flex-shrink: 0; }");
-        sb.AppendLine("    .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; transition: background 0.2s; }");
-        sb.AppendLine("    .btn-play { background: #0078d4; color: white; }");
-        sb.AppendLine("    .btn-play:hover { background: #106ebe; }");
-        sb.AppendLine("    .btn-play.playing { background: #d13438; }");
-        sb.AppendLine("    .btn-play.playing:hover { background: #e81123; }");
-        sb.AppendLine("    .btn-copy { background: #e0e0e0; color: #333; }");
-        sb.AppendLine("    .btn-copy:hover { background: #d0d0d0; }");
-        sb.AppendLine("    .btn-copy.copied { background: #32cd32; color: white; }");
+        sb.AppendLine("    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }");
+        sb.AppendLine("    .btn-play { background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%); color: white; box-shadow: 0 2px 8px rgba(0,120,212,0.3); }");
+        sb.AppendLine("    .btn-play:hover { background: linear-gradient(135deg, #106ebe 0%, #005a9e 100%); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,120,212,0.4); }");
+        sb.AppendLine("    .btn-play.playing { background: linear-gradient(135deg, #d13438 0%, #a4262c 100%); box-shadow: 0 2px 8px rgba(209,52,56,0.3); }");
+        sb.AppendLine("    .btn-play.playing:hover { background: linear-gradient(135deg, #e81123 0%, #c42b1c 100%); box-shadow: 0 4px 12px rgba(209,52,56,0.4); }");
+        sb.AppendLine("    .btn-copy { background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%); color: #333; }");
+        sb.AppendLine("    .btn-copy:hover { background: linear-gradient(135deg, #e0e0e0 0%, #d0d0d0 100%); }");
+        sb.AppendLine("    .btn-copy.copied { background: linear-gradient(135deg, #4caf50 0%, #45a049 100%); color: white; }");
         sb.AppendLine("    .player-container { margin-top: 16px; display: none; }");
         sb.AppendLine("    .player-container.active { display: block; }");
-        sb.AppendLine("    .player-controls { display: flex; align-items: center; gap: 12px; padding: 12px; background: #f0f0f0; border-radius: 8px; }");
-        sb.AppendLine("    .quality-select { padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; background: white; font-size: 11px; cursor: pointer; }");
+        sb.AppendLine("    .player-controls { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 10px; border: 1px solid #dee2e6; }");
+        sb.AppendLine("    .quality-select { padding: 6px 10px; border: 1px solid #ced4da; border-radius: 6px; background: white; font-size: 12px; cursor: pointer; }");
         sb.AppendLine("    .audio-player { display: none; }");
-        sb.AppendLine("    .live-indicator { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: #d13438; color: white; border-radius: 4px; font-size: 12px; font-weight: 600; }");
+        sb.AppendLine("    .live-indicator { display: flex; align-items: center; gap: 6px; padding: 6px 14px; background: linear-gradient(135deg, #d13438 0%, #a4262c 100%); color: white; border-radius: 20px; font-size: 12px; font-weight: 600; box-shadow: 0 2px 6px rgba(209,52,56,0.3); }");
         sb.AppendLine("    .live-dot { width: 8px; height: 8px; background: white; border-radius: 50%; animation: pulse 1.5s infinite; }");
-        sb.AppendLine("    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }");
-        sb.AppendLine("    .play-time { font-size: 13px; color: #333; font-weight: 500; font-variant-numeric: tabular-nums; min-width: 60px; }");
+        sb.AppendLine("    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.9); } }");
+        sb.AppendLine("    .play-time { font-size: 14px; color: #495057; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 60px; }");
         sb.AppendLine("    .spacer { flex: 1; }");
-        sb.AppendLine("    .quality-label { font-size: 11px; color: #666; margin-right: 4px; }");
+        sb.AppendLine("    .quality-label { font-size: 12px; color: #6c757d; margin-right: 4px; }");
+        sb.AppendLine("    .no-streams { text-align: center; padding: 40px; color: #6c757d; }");
+        sb.AppendLine("    .no-streams-icon { font-size: 48px; margin-bottom: 12px; }");
         sb.AppendLine("  </style>");
         sb.AppendLine("</head>");
         sb.AppendLine("<body>");
+        sb.AppendLine("  <div class=\"page-header\">");
+        sb.AppendLine("    <img src=\"/assets/logo.png\" alt=\"Logo\" class=\"page-logo\" onerror=\"this.style.display='none'\">");
+        sb.AppendLine("    <h1 class=\"page-title\">Audio Streams</h1>");
+        sb.AppendLine("    <p class=\"page-subtitle\">Select a stream to start listening</p>");
+        sb.AppendLine("  </div>");
         sb.AppendLine("  <div class=\"streams\">");
 
         var streamIndex = 0;

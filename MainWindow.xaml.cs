@@ -31,6 +31,13 @@ public partial class MainWindow : Window
             AppLogo.Source = bitmap;
         }
 
+        // Set window icon from Assets folder
+        var iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "app.ico");
+        if (File.Exists(iconPath))
+        {
+            Icon = new BitmapImage(new Uri(iconPath, UriKind.Absolute));
+        }
+
         // Auto-start web server and all streams after UI is fully rendered
         // Small delay ensures all StreamItem_Loaded events have completed
         await Task.Delay(500);

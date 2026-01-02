@@ -119,8 +119,14 @@
                 <!-- Server status -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <TextBlock Text="{Binding ServerStatus}" Foreground="#333333" FontSize="14"/>
-                    <TextBlock Text="{Binding ServerUrl}" Foreground="#0078D4" FontSize="12"
-                               Visibility="{Binding IsServerRunning, Converter={StaticResource BoolToVis}}"/>
+                        <TextBlock Text="{Binding ServerUrl}" Foreground="#0078D4" FontSize="12"
+                               Cursor="Hand" TextDecorations="Underline"
+                               Visibility="{Binding IsServerRunning, Converter={StaticResource BoolToVis}}"
+                               ToolTip="Click to open in browser">
+                        <TextBlock.InputBindings>
+                            <MouseBinding MouseAction="LeftClick" Command="{Binding OpenServerUrlCommand}"/>
+                        </TextBlock.InputBindings>
+                    </TextBlock>
                 </StackPanel>
 
                 <!-- Action buttons -->
