@@ -30,7 +30,15 @@
                    FontSize="12"
                    Foreground="#808080"
                    HorizontalAlignment="Center"
-                   Margin="0,4,0,20"/>
+                   Margin="0,4,0,8"/>
+
+        <!-- Version Info -->
+        <TextBlock x:Name="VersionText"
+                   Grid.Row="1"
+                   FontSize="11"
+                   Foreground="#666666"
+                   HorizontalAlignment="Center"
+                   Margin="0,28,0,12"/>
 
         <!-- Description -->
         <TextBlock Grid.Row="2"

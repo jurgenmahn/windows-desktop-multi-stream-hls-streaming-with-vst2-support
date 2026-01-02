@@ -276,7 +276,6 @@ C:\Users\jurge\source\repos\AudioProcessorAndStreamer\bin\x64\Debug\net8.0-windo
 C:\Users\jurge\source\repos\AudioProcessorAndStreamer\bin\x64\Debug\net8.0-windows\win-x64\Presets\TDCat Dense.sts
 C:\Users\jurge\source\repos\AudioProcessorAndStreamer\bin\x64\Debug\net8.0-windows\win-x64\Presets\Xloungeradio_web_hd.sts
 C:\Users\jurge\source\repos\AudioProcessorAndStreamer\bin\x64\Debug\net8.0-windows\win-x64\Assets\9yards-logo.png
-C:\Users\jurge\source\repos\AudioProcessorAndStreamer\bin\x64\Debug\net8.0-windows\win-x64\Assets\app.ico
 C:\Users\jurge\source\repos\AudioProcessorAndStreamer\bin\x64\Debug\net8.0-windows\win-x64\Microsoft.CSharp.dll
 C:\Users\jurge\source\repos\AudioProcessorAndStreamer\bin\x64\Debug\net8.0-windows\win-x64\Microsoft.VisualBasic.Core.dll
 C:\Users\jurge\source\repos\AudioProcessorAndStreamer\bin\x64\Debug\net8.0-windows\win-x64\Microsoft.Win32.Primitives.dll

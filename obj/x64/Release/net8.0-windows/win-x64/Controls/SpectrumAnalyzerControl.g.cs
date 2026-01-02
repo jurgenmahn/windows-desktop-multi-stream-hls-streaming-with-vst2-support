@@ -84,7 +84,8 @@ namespace AudioProcessorAndStreamer.Controls {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/AudioProcessorAndStreamer;component/controls/spectrumanalyzercontrol.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri(("/AudioProcessorAndStreamer;V1.0.0.0;component/controls/spectrumanalyzercontrol.xa" +
+                    "ml"), System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\..\Controls\SpectrumAnalyzerControl.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);
