@@ -23,6 +23,8 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=InstallerOutput
 OutputBaseFilename=AudioProcessorAndStreamer-Setup-{#MyAppVersion}
+SetupIconFile=Assets\app.ico
+UninstallDisplayIcon={app}\Assets\app.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -64,17 +66,16 @@ Source: "{#BuildOutput}\Presets\*"; DestDir: "{app}\Presets"; Flags: ignoreversi
 Name: "{app}\Plugins"
 Name: "{app}\Presets"
 Name: "{app}\Assets"
-Name: "{app}\hls_output"
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\Assets\app.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\Assets\app.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
-; Clean up generated HLS files on uninstall
-Type: filesandordirs; Name: "{app}\hls_output"
+; Clean up user data folder on uninstall (optional - contains config and HLS output)
+Type: filesandordirs; Name: "{localappdata}\AudioProcessorAndStreamer"
 

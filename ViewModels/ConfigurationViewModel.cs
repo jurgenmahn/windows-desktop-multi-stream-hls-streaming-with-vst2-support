@@ -340,9 +340,7 @@ public partial class ConfigurationViewModel : ObservableObject
         // Set initial directory if current value exists
         if (!string.IsNullOrEmpty(HlsOutputDirectory))
         {
-            var fullPath = System.IO.Path.IsPathRooted(HlsOutputDirectory)
-                ? HlsOutputDirectory
-                : System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, HlsOutputDirectory);
+            var fullPath = ResolveHlsOutputDirectory(HlsOutputDirectory);
             if (System.IO.Directory.Exists(fullPath))
             {
                 dialog.SelectedPath = fullPath;
@@ -354,6 +352,21 @@ public partial class ConfigurationViewModel : ObservableObject
             HlsOutputDirectory = dialog.SelectedPath;
             HasChanges = true;
         }
+    }
+
+    private static string ResolveHlsOutputDirectory(string hlsOutputDirectory)
+    {
+        // If absolute path, use as-is
+        if (System.IO.Path.IsPathRooted(hlsOutputDirectory))
+        {
+            return hlsOutputDirectory;
+        }
+
+        // For relative paths, use LocalApplicationData (writable location)
+        var appDataDir = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AudioProcessorAndStreamer");
+        return System.IO.Path.Combine(appDataDir, hlsOutputDirectory);
     }
 
     partial void OnSelectedStreamChanged(StreamConfiguration? value)

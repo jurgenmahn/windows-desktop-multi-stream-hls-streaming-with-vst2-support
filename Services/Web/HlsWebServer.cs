@@ -40,9 +40,22 @@ public class HlsWebServer : IAsyncDisposable
         _streams = _config.Streams;
         _port = _config.WebServerPort;
         _streamManager = streamManager;
-        _hlsDirectory = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
-            _config.HlsOutputDirectory);
+        _hlsDirectory = ResolveHlsOutputDirectory(_config.HlsOutputDirectory);
+    }
+
+    private static string ResolveHlsOutputDirectory(string hlsOutputDirectory)
+    {
+        // If absolute path, use as-is
+        if (Path.IsPathRooted(hlsOutputDirectory))
+        {
+            return hlsOutputDirectory;
+        }
+
+        // For relative paths, use LocalApplicationData (writable location)
+        var appDataDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AudioProcessorAndStreamer");
+        return Path.Combine(appDataDir, hlsOutputDirectory);
     }
 
     public HlsWebServer(int port, string hlsDirectory)

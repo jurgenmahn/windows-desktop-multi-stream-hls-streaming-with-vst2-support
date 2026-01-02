@@ -55,8 +55,15 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         _webServer = webServer;
         _monitorService = monitorService;
         _config = config.Value;
-        _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "streams.json");
-        _appConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appconfig.json");
+
+        // Use LocalApplicationData for user config files (writable, per-user)
+        var appDataDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AudioProcessorAndStreamer");
+        Directory.CreateDirectory(appDataDir);
+
+        _configPath = Path.Combine(appDataDir, "streams.json");
+        _appConfigPath = Path.Combine(appDataDir, "appconfig.json");
 
         _webServer.RequestReceived += (s, msg) =>
             System.Diagnostics.Debug.WriteLine($"[HLS] {msg}");

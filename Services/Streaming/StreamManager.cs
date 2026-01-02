@@ -42,7 +42,22 @@ public class StreamManager : IStreamManager
         _config = config.Value;
 
         // Ensure HLS output directory exists
-        Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _config.HlsOutputDirectory));
+        Directory.CreateDirectory(ResolveHlsOutputDirectory(_config.HlsOutputDirectory));
+    }
+
+    private static string ResolveHlsOutputDirectory(string hlsOutputDirectory)
+    {
+        // If absolute path, use as-is
+        if (Path.IsPathRooted(hlsOutputDirectory))
+        {
+            return hlsOutputDirectory;
+        }
+
+        // For relative paths, use LocalApplicationData (writable location)
+        var appDataDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AudioProcessorAndStreamer");
+        return Path.Combine(appDataDir, hlsOutputDirectory);
     }
 
     public AudioStreamProcessor? StartStream(StreamConfiguration config)
@@ -57,7 +72,7 @@ public class StreamManager : IStreamManager
 
         try
         {
-            var hlsOutputDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _config.HlsOutputDirectory);
+            var hlsOutputDir = ResolveHlsOutputDirectory(_config.HlsOutputDirectory);
 
             var processor = new AudioStreamProcessor(
                 config,
