@@ -198,19 +198,43 @@ public class VstPluginInstance : IDisposable
 
     public bool LoadPresetFromFile(string presetFilePath)
     {
-        if (string.IsNullOrEmpty(presetFilePath) || !File.Exists(presetFilePath))
+        if (string.IsNullOrEmpty(presetFilePath))
             return false;
+
+        // Resolve relative paths to absolute using application base directory
+        var resolvedPath = ResolvePresetPath(presetFilePath);
+
+        if (!File.Exists(resolvedPath))
+        {
+            System.Diagnostics.Debug.WriteLine($"Preset file not found: {resolvedPath}");
+            return false;
+        }
 
         try
         {
-            var presetData = File.ReadAllBytes(presetFilePath);
+            var presetData = File.ReadAllBytes(resolvedPath);
             _context.PluginCommandStub.Commands.SetChunk(presetData, true);
+            System.Diagnostics.Debug.WriteLine($"Loaded preset: {resolvedPath}");
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"Failed to load preset {resolvedPath}: {ex.Message}");
             return false;
         }
+    }
+
+    private static string ResolvePresetPath(string presetPath)
+    {
+        // If already absolute, use as-is
+        if (Path.IsPathRooted(presetPath))
+        {
+            return presetPath;
+        }
+
+        // Resolve relative to application base directory
+        var appDir = AppDomain.CurrentDomain.BaseDirectory;
+        return Path.Combine(appDir, presetPath);
     }
 
     public bool SavePresetToFile(string presetFilePath)

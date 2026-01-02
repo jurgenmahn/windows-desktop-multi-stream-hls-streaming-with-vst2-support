@@ -38,7 +38,7 @@ public partial class ConfigurationViewModel : ObservableObject
     private int _webServerPort = 8080;
 
     [ObservableProperty]
-    private string _hlsOutputDirectory = "hls_output";
+    private string _hlsOutputDirectory = "stream_output";
 
     [ObservableProperty]
     private bool _lazyProcessing = true;

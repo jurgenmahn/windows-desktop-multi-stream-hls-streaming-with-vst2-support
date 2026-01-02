@@ -39,7 +39,7 @@ public partial class App : Application
                 services.PostConfigure<AppConfiguration>(config =>
                 {
                     config.FfmpegPath ??= "FFmpeg/bin/ffmpeg.exe";
-                    config.HlsOutputDirectory ??= "hls_output";
+                    config.HlsOutputDirectory ??= "stream_output";
                     config.BaseDomain ??= "http://localhost:8080";
                     config.Streams ??= new List<StreamConfiguration>();
                 });

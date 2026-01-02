@@ -12,33 +12,51 @@ public class VstHostService : IVstHostService
 
     public VstPluginInstance? LoadPlugin(string pluginPath)
     {
-        if (!File.Exists(pluginPath))
+        // Resolve relative paths to absolute using application base directory
+        var resolvedPath = ResolvePluginPath(pluginPath);
+
+        if (!File.Exists(resolvedPath))
         {
+            System.Diagnostics.Debug.WriteLine($"VST plugin not found: {resolvedPath}");
             return null;
         }
 
         try
         {
             var hostStub = new HostCommandStub();
-            var context = VstPluginContext.Create(pluginPath, hostStub);
+            var context = VstPluginContext.Create(resolvedPath, hostStub);
             hostStub.PluginContext = context;
 
             context.PluginCommandStub.Commands.Open();
 
-            var instance = new VstPluginInstance(context, hostStub, pluginPath);
+            var instance = new VstPluginInstance(context, hostStub, resolvedPath);
 
             lock (_lock)
             {
                 _loadedPlugins.Add(instance);
             }
 
+            System.Diagnostics.Debug.WriteLine($"Loaded VST plugin: {resolvedPath}");
             return instance;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Failed to load VST plugin {pluginPath}: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Failed to load VST plugin {resolvedPath}: {ex.Message}");
             return null;
         }
+    }
+
+    private static string ResolvePluginPath(string pluginPath)
+    {
+        // If already absolute, use as-is
+        if (Path.IsPathRooted(pluginPath))
+        {
+            return pluginPath;
+        }
+
+        // Resolve relative to application base directory
+        var appDir = AppDomain.CurrentDomain.BaseDirectory;
+        return Path.Combine(appDir, pluginPath);
     }
 
     public VstPluginInstance? LoadPlugin(VstPluginConfig config)

@@ -58,6 +58,22 @@ public class HlsWebServer : IAsyncDisposable
         return Path.Combine(appDataDir, hlsOutputDirectory);
     }
 
+    private static string? ResolveFilePath(string? filePath)
+    {
+        if (string.IsNullOrEmpty(filePath))
+            return null;
+
+        // If already absolute, use as-is
+        if (Path.IsPathRooted(filePath))
+        {
+            return filePath;
+        }
+
+        // Resolve relative to application base directory
+        var appDir = AppDomain.CurrentDomain.BaseDirectory;
+        return Path.Combine(appDir, filePath);
+    }
+
     public HlsWebServer(int port, string hlsDirectory)
     {
         _port = port;
@@ -476,8 +492,11 @@ public class HlsWebServer : IAsyncDisposable
             }
             var streamUrl = $"{baseUrl}/hls/{stream.StreamPath}/{manifestFile}";
             var formatType = isDash ? "dash" : "hls";
-            var logoHtml = !string.IsNullOrEmpty(stream.LogoPath) && File.Exists(stream.LogoPath)
-                ? $"<img src=\"data:image/png;base64,{Convert.ToBase64String(File.ReadAllBytes(stream.LogoPath))}\" alt=\"{System.Net.WebUtility.HtmlEncode(stream.Name)}\">"
+
+            // Resolve logo path (could be relative)
+            var resolvedLogoPath = ResolveFilePath(stream.LogoPath);
+            var logoHtml = !string.IsNullOrEmpty(resolvedLogoPath) && File.Exists(resolvedLogoPath)
+                ? $"<img src=\"data:image/png;base64,{Convert.ToBase64String(File.ReadAllBytes(resolvedLogoPath))}\" alt=\"{System.Net.WebUtility.HtmlEncode(stream.Name)}\">"
                 : "&#9835;";
 
             // Format labels for display

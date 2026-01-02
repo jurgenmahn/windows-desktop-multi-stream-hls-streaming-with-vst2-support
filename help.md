@@ -367,7 +367,7 @@ De TCP poort waarop de ingebouwde webserver luistert.
 ### Stream Output Directory
 De map waar alle HLS/DASH bestanden worden opgeslagen.
 
-**Standaard:** `hls_output` (relatief aan de applicatie map)
+**Standaard:** `stream_output` (relatief aan de applicatie map)
 
 ### Segment Duur (seconden)
 De lengte van elk audio segment in seconden.
