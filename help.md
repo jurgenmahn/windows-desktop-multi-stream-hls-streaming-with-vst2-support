@@ -1,4 +1,4 @@
-![Logo](Assets/logo.png){ width=200px }
+![Logo](Assets/logo.png)
 
 # Audio Processor And Streamer - Handleiding
 
