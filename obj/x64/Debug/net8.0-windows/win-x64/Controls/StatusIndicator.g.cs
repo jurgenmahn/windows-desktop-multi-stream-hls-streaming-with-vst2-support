@@ -69,7 +69,7 @@ namespace AudioProcessorAndStreamer.Controls {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/AudioProcessorAndStreamer;component/controls/statusindicator.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/AudioProcessorAndStreamer;V1.0.0.0;component/controls/statusindicator.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\..\Controls\StatusIndicator.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

@@ -69,7 +69,7 @@ namespace AudioProcessorAndStreamer.Controls {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/AudioProcessorAndStreamer;component/controls/oscilloscopecontrol.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/AudioProcessorAndStreamer;V1.0.0.0;component/controls/oscilloscopecontrol.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\..\Controls\OscilloscopeControl.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);
