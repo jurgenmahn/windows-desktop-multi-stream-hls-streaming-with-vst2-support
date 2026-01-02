@@ -157,6 +157,37 @@ public partial class StreamViewModel : ObservableObject, IDisposable
 
         if (_processor != null)
         {
+            // Check for initialization errors first
+            if (_processor.HasInitializationErrors)
+            {
+                var errorMessage = $"Stream '{_config.Name}' has initialization errors:\n\n" +
+                                   string.Join("\n", _processor.InitializationErrors.Select(e => $"• {e}"));
+
+                if (_processor.InitializationWarnings.Count > 0)
+                {
+                    errorMessage += "\n\nWarnings:\n" +
+                                    string.Join("\n", _processor.InitializationWarnings.Select(w => $"• {w}"));
+                }
+
+                Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    System.Windows.MessageBox.Show(errorMessage, "Stream Initialization Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+
+                // Dispose the processor since it has errors (it wasn't added to active streams)
+                _processor.Dispose();
+                _processor = null;
+                StatusMessage = "Init failed";
+
+                // Restart monitoring since stream failed
+                if (_spectrumAnalyzersAttached)
+                {
+                    StartInputMonitoring();
+                }
+                return;
+            }
+
             _processor.InputSamplesAvailable += OnInputSamplesAvailable;
             _processor.OutputSamplesAvailable += OnOutputSamplesAvailable;
             _processor.EncoderMessage += OnEncoderMessage;
@@ -165,8 +196,20 @@ public partial class StreamViewModel : ObservableObject, IDisposable
             // Apply current VST enabled state
             _processor.SetVstBypassed(!VstEnabled);
 
-            // Warn user about sample rate mismatch
-            if (_processor.HasSampleRateMismatch)
+            // Show warnings if any (but continue since no errors)
+            if (_processor.InitializationWarnings.Count > 0)
+            {
+                var warningMessage = $"Stream '{_config.Name}' started with warnings:\n\n" +
+                                     string.Join("\n", _processor.InitializationWarnings.Select(w => $"• {w}"));
+
+                Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    System.Windows.MessageBox.Show(warningMessage, "Stream Warning",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                });
+            }
+            // Also warn about sample rate mismatch (if not already in warnings)
+            else if (_processor.HasSampleRateMismatch)
             {
                 var message = $"Sample rate mismatch detected!\n\n" +
                               $"Configured: {_processor.ConfiguredSampleRate} Hz\n" +
@@ -187,6 +230,20 @@ public partial class StreamViewModel : ObservableObject, IDisposable
         else
         {
             StatusMessage = "Failed to start";
+
+            Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                System.Windows.MessageBox.Show(
+                    $"Failed to start stream '{_config.Name}'.\n\n" +
+                    "Check that:\n" +
+                    "• The audio device is connected and available\n" +
+                    "• FFmpeg is installed in the FFmpeg folder\n" +
+                    "• VST plugins exist in the Plugins folder\n" +
+                    "• You have write permissions to the output directory",
+                    "Stream Start Failed",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            });
+
             // Restart monitoring since stream failed
             if (_spectrumAnalyzersAttached)
             {
@@ -324,6 +381,33 @@ public partial class StreamViewModel : ObservableObject, IDisposable
 
         if (processor != null)
         {
+            // Check for initialization errors first
+            if (processor.HasInitializationErrors)
+            {
+                var errorMessage = $"Stream '{_config.Name}' has initialization errors:\n\n" +
+                                   string.Join("\n", processor.InitializationErrors.Select(e => $"• {e}"));
+
+                if (processor.InitializationWarnings.Count > 0)
+                {
+                    errorMessage += "\n\nWarnings:\n" +
+                                    string.Join("\n", processor.InitializationWarnings.Select(w => $"• {w}"));
+                }
+
+                System.Windows.MessageBox.Show(errorMessage, "Stream Initialization Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+
+                // Dispose the processor since it has errors (it wasn't added to active streams)
+                processor.Dispose();
+                StatusMessage = "Init failed";
+
+                // Restart monitoring since stream failed
+                if (_spectrumAnalyzersAttached)
+                {
+                    await StartInputMonitoringAsync();
+                }
+                return;
+            }
+
             _processor = processor;
             _processor.InputSamplesAvailable += OnInputSamplesAvailable;
             _processor.OutputSamplesAvailable += OnOutputSamplesAvailable;
@@ -333,8 +417,17 @@ public partial class StreamViewModel : ObservableObject, IDisposable
             // Apply current VST enabled state
             _processor.SetVstBypassed(!VstEnabled);
 
-            // Check for sample rate mismatch
-            if (_processor.HasSampleRateMismatch)
+            // Show warnings if any (but continue since no errors)
+            if (_processor.InitializationWarnings.Count > 0)
+            {
+                var warningMessage = $"Stream '{_config.Name}' started with warnings:\n\n" +
+                                     string.Join("\n", _processor.InitializationWarnings.Select(w => $"• {w}"));
+
+                System.Windows.MessageBox.Show(warningMessage, "Stream Warning",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            // Also warn about sample rate mismatch (if not already in warnings)
+            else if (_processor.HasSampleRateMismatch)
             {
                 var message = $"Sample rate mismatch detected!\n\n" +
                               $"Configured: {_processor.ConfiguredSampleRate} Hz\n" +
@@ -352,6 +445,17 @@ public partial class StreamViewModel : ObservableObject, IDisposable
         else
         {
             StatusMessage = "Failed to start";
+
+            System.Windows.MessageBox.Show(
+                $"Failed to start stream '{_config.Name}'.\n\n" +
+                "Check that:\n" +
+                "• The audio device is connected and available\n" +
+                "• FFmpeg is installed in the FFmpeg folder\n" +
+                "• VST plugins exist in the Plugins folder\n" +
+                "• You have write permissions to the output directory",
+                "Stream Start Failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+
             // Restart monitoring since stream failed
             if (_spectrumAnalyzersAttached)
             {

@@ -1,3 +1,5 @@
+![Logo](Assets/logo.png){ width=200px }
+
 # Audio Processor And Streamer - Handleiding
 
 Deze handleiding beschrijft alle instellingen in het configuratiescherm van de applicatie.

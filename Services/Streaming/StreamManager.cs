@@ -86,6 +86,14 @@ public class StreamManager : IStreamManager
 
             processor.Stopped += (s, e) => OnStreamStopped(config.Id, config.Name);
 
+            // Check for initialization errors before starting
+            if (processor.HasInitializationErrors)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{config.Name}] Initialization errors - not starting stream");
+                // Return the processor so caller can check errors, but don't add to active streams
+                return processor;
+            }
+
             lock (_lock)
             {
                 _activeStreams[config.Id] = processor;

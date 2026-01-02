@@ -37,6 +37,8 @@ public class AudioStreamProcessor : IDisposable
     private bool _isRunning;
     private bool _isEncodingActive;
     private bool _disposed;
+    private readonly List<string> _initializationWarnings = new();
+    private readonly List<string> _initializationErrors = new();
 
     public string Id => _config.Id;
     public string StreamPath => _config.StreamPath ?? _config.Id;
@@ -47,6 +49,9 @@ public class AudioStreamProcessor : IDisposable
     public int ConfiguredSampleRate => _config.AudioInput.SampleRate;
     public bool HasSampleRateMismatch => _config.AudioInput.DriverType == AudioDriverType.Wasapi
                                          && _config.AudioInput.SampleRate != _actualSampleRate;
+    public IReadOnlyList<string> InitializationWarnings => _initializationWarnings;
+    public IReadOnlyList<string> InitializationErrors => _initializationErrors;
+    public bool HasInitializationErrors => _initializationErrors.Count > 0;
 
     public event EventHandler<float[]>? InputSamplesAvailable;
     public event EventHandler<float[]>? OutputSamplesAvailable;
@@ -72,12 +77,34 @@ public class AudioStreamProcessor : IDisposable
         _hlsPlaylistSize = hlsPlaylistSize;
         _ffmpegService = ffmpegService;
 
-        // Create audio capture based on driver type
-        _capture = config.AudioInput.DriverType switch
+        // Check FFmpeg availability
+        if (!ffmpegService.IsAvailable)
         {
-            AudioDriverType.Asio => new AsioCaptureService(config.AudioInput),
-            _ => new WasapiCaptureService(config.AudioInput)
-        };
+            _initializationErrors.Add($"FFmpeg not found at: {ffmpegService.FfmpegPath}");
+            System.Diagnostics.Debug.WriteLine($"[{config.Name}] ERROR: FFmpeg not found at {ffmpegService.FfmpegPath}");
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[{config.Name}] FFmpeg found at: {ffmpegService.FfmpegPath}");
+        }
+
+        // Create audio capture based on driver type
+        try
+        {
+            _capture = config.AudioInput.DriverType switch
+            {
+                AudioDriverType.Asio => new AsioCaptureService(config.AudioInput),
+                _ => new WasapiCaptureService(config.AudioInput)
+            };
+            System.Diagnostics.Debug.WriteLine($"[{config.Name}] Audio capture created: {config.AudioInput.DeviceName}");
+        }
+        catch (Exception ex)
+        {
+            _initializationErrors.Add($"Failed to initialize audio device '{config.AudioInput.DeviceName}': {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[{config.Name}] ERROR: Audio capture failed: {ex.Message}");
+            // Create a dummy capture to avoid null reference - stream won't work but won't crash
+            _capture = new WasapiCaptureService(config.AudioInput);
+        }
 
         // Use the ACTUAL sample rate from the capture device, not the configured one
         // This is critical - WASAPI captures at the device's native rate
@@ -89,6 +116,7 @@ public class AudioStreamProcessor : IDisposable
         // Check for sample rate mismatch with WASAPI
         if (config.AudioInput.DriverType == AudioDriverType.Wasapi && config.AudioInput.SampleRate != _actualSampleRate)
         {
+            _initializationWarnings.Add($"Sample rate mismatch: configured {config.AudioInput.SampleRate}Hz but device is {_actualSampleRate}Hz. Using device rate.");
             System.Diagnostics.Debug.WriteLine($"[{config.Name}] WARNING: Sample rate mismatch! Using device rate {_actualSampleRate}Hz");
         }
 
@@ -112,26 +140,34 @@ public class AudioStreamProcessor : IDisposable
         _vstChain = new List<VstPluginInstance>();
         foreach (var vstConfig in config.VstPlugins.OrderBy(p => p.Order))
         {
+            System.Diagnostics.Debug.WriteLine($"[{config.Name}] Loading VST plugin: {vstConfig.PluginPath}");
             var plugin = vstHost.LoadPlugin(vstConfig);
             if (plugin != null)
             {
                 plugin.Initialize(_actualSampleRate, _blockSize);
                 plugin.IsBypassed = vstConfig.IsBypassed;
+                System.Diagnostics.Debug.WriteLine($"[{config.Name}] VST plugin loaded: {plugin.PluginName}");
 
                 // Load preset file if configured
                 if (!string.IsNullOrEmpty(vstConfig.PresetFilePath))
                 {
                     if (plugin.LoadPresetFromFile(vstConfig.PresetFilePath))
                     {
-                        System.Diagnostics.Debug.WriteLine($"Loaded preset for {plugin.PluginName}: {vstConfig.PresetFilePath}");
+                        System.Diagnostics.Debug.WriteLine($"[{config.Name}] Loaded preset: {vstConfig.PresetFilePath}");
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"Failed to load preset for {plugin.PluginName}: {vstConfig.PresetFilePath}");
+                        _initializationWarnings.Add($"Failed to load preset for {plugin.PluginName}: {vstConfig.PresetFilePath}");
+                        System.Diagnostics.Debug.WriteLine($"[{config.Name}] WARNING: Failed to load preset: {vstConfig.PresetFilePath}");
                     }
                 }
 
                 _vstChain.Add(plugin);
+            }
+            else
+            {
+                _initializationErrors.Add($"Failed to load VST plugin: {vstConfig.PluginPath}");
+                System.Diagnostics.Debug.WriteLine($"[{config.Name}] ERROR: Failed to load VST plugin: {vstConfig.PluginPath}");
             }
         }
 
@@ -140,10 +176,27 @@ public class AudioStreamProcessor : IDisposable
         _streamOutputDir = Path.Combine(hlsOutputDirectory, config.StreamPath ?? config.Id);
 
         // Ensure output directory exists
-        Directory.CreateDirectory(_streamOutputDir);
+        try
+        {
+            Directory.CreateDirectory(_streamOutputDir);
+            System.Diagnostics.Debug.WriteLine($"[{config.Name}] Output directory: {_streamOutputDir}");
+        }
+        catch (Exception ex)
+        {
+            _initializationErrors.Add($"Failed to create output directory '{_streamOutputDir}': {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[{config.Name}] ERROR: Failed to create output directory: {ex.Message}");
+        }
 
         // Create master playlist referencing all encoding profiles (needed even for lazy processing)
-        CreateMasterPlaylist(_streamOutputDir, config.EncodingProfiles);
+        try
+        {
+            CreateMasterPlaylist(_streamOutputDir, config.EncodingProfiles);
+        }
+        catch (Exception ex)
+        {
+            _initializationErrors.Add($"Failed to create master playlist: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[{config.Name}] ERROR: Failed to create master playlist: {ex.Message}");
+        }
 
         // If not using lazy processing, create encoders immediately
         if (!_lazyProcessing)
@@ -154,6 +207,16 @@ public class AudioStreamProcessor : IDisposable
 
         // Wire up audio processing
         _capture.DataAvailable += OnAudioDataAvailable;
+
+        // Log initialization summary
+        if (_initializationErrors.Count > 0)
+        {
+            System.Diagnostics.Debug.WriteLine($"[{config.Name}] Initialization completed with {_initializationErrors.Count} error(s)");
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"[{config.Name}] Initialization completed successfully");
+        }
     }
 
     private void CreateMasterPlaylist(string outputDir, List<EncodingProfile> profiles)
