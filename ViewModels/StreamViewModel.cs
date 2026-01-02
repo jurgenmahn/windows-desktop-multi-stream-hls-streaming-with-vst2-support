@@ -84,11 +84,13 @@ public partial class StreamViewModel : ObservableObject, IDisposable
         Application.Current?.Dispatcher.BeginInvoke(() =>
         {
             // Directly set backing field to avoid triggering OnMonitorEnabledChanged again
+            #pragma warning disable MVVMTK0034
             if (_monitorEnabled != (activeStreamId == _config.Id))
             {
                 _monitorEnabled = activeStreamId == _config.Id;
                 OnPropertyChanged(nameof(MonitorEnabled));
             }
+            #pragma warning restore MVVMTK0034
         });
     }
 

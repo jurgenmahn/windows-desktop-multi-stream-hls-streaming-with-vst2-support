@@ -37,18 +37,18 @@ public partial class AboutDialog : Window
 
     private static DateTime GetBuildDate(Assembly assembly)
     {
-        // Try to get build date from assembly file
-        var location = assembly.Location;
-        if (!string.IsNullOrEmpty(location) && File.Exists(location))
-        {
-            return File.GetLastWriteTime(location);
-        }
-
         // For single-file deployments, use the executable
         var exePath = Environment.ProcessPath;
         if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath))
         {
             return File.GetLastWriteTime(exePath);
+        }
+
+        // Fallback: try main assembly DLL in base directory
+        var dllPath = Path.Combine(AppContext.BaseDirectory, "AudioProcessorAndStreamer.dll");
+        if (File.Exists(dllPath))
+        {
+            return File.GetLastWriteTime(dllPath);
         }
 
         return DateTime.Now;
