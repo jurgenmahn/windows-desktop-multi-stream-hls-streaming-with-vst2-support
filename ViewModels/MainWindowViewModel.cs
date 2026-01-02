@@ -381,9 +381,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             SaveStreamsToConfig();
             UpdateWebServerStreams();
 
-            // Restore running state - restart server if it was running
+            // Restart server if it was running (stop first to apply new port/config)
             if (wasServerRunning)
             {
+                await StopServerAsync();
                 await StartServerAsync();
             }
 
@@ -485,7 +486,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 UpdateWebServerStreams();
             }
 
-            // Restart server if it was running
+            // Restart server if it was running (it was stopped above)
             if (wasServerRunning)
             {
                 await StartServerAsync();

@@ -13,8 +13,7 @@ namespace AudioProcessorAndStreamer.Services.Web;
 
 public class HlsWebServer : IAsyncDisposable
 {
-    private readonly int _port;
-    private readonly string _hlsDirectory;
+    private string _hlsDirectory;
     private readonly AppConfiguration _config;
     private readonly List<StreamConfiguration> _streams;
     private readonly IStreamManager? _streamManager;
@@ -27,7 +26,7 @@ public class HlsWebServer : IAsyncDisposable
     private System.Threading.Timer? _cleanupTimer;
 
     public bool IsRunning => _isRunning;
-    public int Port => _port;
+    public int Port => _config.WebServerPort;  // Always read from config for current value
     public string BaseUrl => _config.GetFullBaseUrl();
 
     public event EventHandler<string>? RequestReceived;
@@ -38,7 +37,6 @@ public class HlsWebServer : IAsyncDisposable
     {
         _config = config.Value;
         _streams = _config.Streams;
-        _port = _config.WebServerPort;
         _streamManager = streamManager;
         _hlsDirectory = ResolveHlsOutputDirectory(_config.HlsOutputDirectory);
     }
@@ -76,9 +74,8 @@ public class HlsWebServer : IAsyncDisposable
 
     public HlsWebServer(int port, string hlsDirectory)
     {
-        _port = port;
         _hlsDirectory = hlsDirectory;
-        _config = new AppConfiguration();
+        _config = new AppConfiguration { WebServerPort = port };
         _streams = new List<StreamConfiguration>();
     }
 
@@ -191,9 +188,12 @@ public class HlsWebServer : IAsyncDisposable
 
         var builder = WebApplication.CreateSlimBuilder();
 
+        // Re-resolve HLS directory in case config changed
+        _hlsDirectory = ResolveHlsOutputDirectory(_config.HlsOutputDirectory);
+
         builder.WebHost.ConfigureKestrel(options =>
         {
-            options.ListenAnyIP(_port);
+            options.ListenAnyIP(Port);
         });
 
         _app = builder.Build();

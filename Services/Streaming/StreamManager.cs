@@ -99,7 +99,25 @@ public class StreamManager : IStreamManager
                 _activeStreams[config.Id] = processor;
             }
 
-            processor.Start();
+            try
+            {
+                processor.Start();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{config.Name}] ERROR: processor.Start() failed: {ex.Message}");
+                lock (_lock)
+                {
+                    _activeStreams.Remove(config.Id);
+                }
+                processor.Dispose();
+                StreamError?.Invoke(this, new StreamErrorEventArgs(
+                    config.Id,
+                    config.Name,
+                    $"Failed to start stream: {ex.Message}",
+                    ex));
+                return null;
+            }
 
             // Warn user about sample rate mismatch with WASAPI
             if (processor.HasSampleRateMismatch)
@@ -114,6 +132,7 @@ public class StreamManager : IStreamManager
                     null));
             }
 
+            System.Diagnostics.Debug.WriteLine($"[{config.Name}] Stream started successfully");
             StreamStarted?.Invoke(this, new StreamEventArgs(config.Id, config.Name));
 
             return processor;

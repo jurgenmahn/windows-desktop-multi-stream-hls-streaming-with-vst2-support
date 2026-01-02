@@ -542,8 +542,25 @@ public class AudioStreamProcessor : IDisposable
     {
         if (_isRunning) return;
 
-        _isRunning = true;
-        _capture.StartCapture();
+        System.Diagnostics.Debug.WriteLine($"[{_config.Name}] Starting stream processor...");
+
+        try
+        {
+            _isRunning = true;
+            _capture.StartCapture();
+            System.Diagnostics.Debug.WriteLine($"[{_config.Name}] Stream processor started successfully");
+            System.Diagnostics.Debug.WriteLine($"[{_config.Name}]   - Audio capture: {(_capture.IsCapturing ? "Running" : "NOT Running")}");
+            System.Diagnostics.Debug.WriteLine($"[{_config.Name}]   - VST plugins: {_vstChain.Count}");
+            System.Diagnostics.Debug.WriteLine($"[{_config.Name}]   - Encoders: {_encoders.Count}");
+            System.Diagnostics.Debug.WriteLine($"[{_config.Name}]   - Encoding active: {_isEncodingActive}");
+        }
+        catch (Exception ex)
+        {
+            _isRunning = false;
+            _initializationErrors.Add($"Failed to start audio capture: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[{_config.Name}] ERROR: Failed to start: {ex.Message}");
+            throw;
+        }
     }
 
     public void Stop()

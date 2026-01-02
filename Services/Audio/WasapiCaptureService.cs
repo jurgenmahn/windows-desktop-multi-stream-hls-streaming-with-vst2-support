@@ -105,8 +105,18 @@ public class WasapiCaptureService : IAudioCaptureService
     public void StartCapture()
     {
         if (_isCapturing) return;
-        _capture.StartRecording();
-        _isCapturing = true;
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[WasapiCapture] Starting capture: {_waveFormat.SampleRate}Hz, {_waveFormat.Channels}ch, {_waveFormat.BitsPerSample}bit");
+            _capture.StartRecording();
+            _isCapturing = true;
+            System.Diagnostics.Debug.WriteLine($"[WasapiCapture] Capture started successfully");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WasapiCapture] ERROR: Failed to start capture: {ex.Message}");
+            throw;
+        }
     }
 
     public void StopCapture()

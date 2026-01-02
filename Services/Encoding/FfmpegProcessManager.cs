@@ -133,7 +133,20 @@ public class FfmpegProcessManager : IDisposable
             }
         }
 
-        _ffmpegProcess.Start();
+        try
+        {
+            var started = _ffmpegProcess.Start();
+            if (!started)
+            {
+                throw new InvalidOperationException("FFmpeg process failed to start");
+            }
+            System.Diagnostics.Debug.WriteLine($"[FFmpeg {profile.Name}] Process started, PID: {_ffmpegProcess.Id}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[FFmpeg {profile.Name}] ERROR: Failed to start process: {ex.Message}");
+            throw;
+        }
         _ffmpegProcess.BeginErrorReadLine();
         _inputStream = _ffmpegProcess.StandardInput.BaseStream;
 
