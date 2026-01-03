@@ -100,8 +100,8 @@ public partial class App : Application
         var exitThread = new System.Threading.Thread(() =>
         {
             System.Threading.Thread.Sleep(10000);
-            DebugLogger.Log("App", "Failsafe timeout - forcing process termination");
-            Environment.Exit(1);
+            DebugLogger.Log("App", "Failsafe timeout - forcing process termination with Kill()");
+            System.Diagnostics.Process.GetCurrentProcess().Kill();
         })
         {
             IsBackground = false, // Must be foreground to survive while cleanup runs
@@ -171,16 +171,9 @@ public partial class App : Application
         finally
         {
             // Force process termination - always execute even if exceptions occur
-            DebugLogger.Log("App", "Forcing process exit");
-            try
-            {
-                Environment.Exit(0);
-            }
-            catch
-            {
-                // If Environment.Exit fails, use Process.Kill as last resort
-                System.Diagnostics.Process.GetCurrentProcess().Kill();
-            }
+            DebugLogger.Log("App", "Forcing process exit with Process.Kill()");
+            // Use Process.Kill() directly as it's more reliable than Environment.Exit in WPF
+            System.Diagnostics.Process.GetCurrentProcess().Kill();
         }
     }
 }

@@ -474,7 +474,7 @@ public class HlsWebServer : IAsyncDisposable
         sb.AppendLine("    .btn-info-toggle.expanded { background: #e3f2fd; border-color: #1565c0; color: #1565c0; }");
         sb.AppendLine("    .stream-details { display: none; margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; }");
         sb.AppendLine("    .stream-details.expanded { display: block; }");
-        sb.AppendLine("    .stream-profiles { font-size: 12px; color: #666; }");
+        sb.AppendLine("    .stream-profiles { font-size: 12px; color: #666; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }");
         sb.AppendLine("    .profile-badge { display: inline-block; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); color: #1565c0; padding: 3px 10px; border-radius: 20px; margin-right: 4px; margin-top: 4px; font-weight: 500; }");
         sb.AppendLine("    .format-badge { display: inline-block; background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); color: #e65100; padding: 3px 10px; border-radius: 20px; margin-right: 4px; margin-top: 4px; font-weight: 600; }");
         sb.AppendLine("    .container-badge { display: inline-block; background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); color: #7b1fa2; padding: 3px 10px; border-radius: 20px; margin-right: 4px; margin-top: 4px; font-weight: 500; }");
@@ -484,7 +484,7 @@ public class HlsWebServer : IAsyncDisposable
         sb.AppendLine("    .btn-play:hover { background: linear-gradient(135deg, #106ebe 0%, #005a9e 100%); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,120,212,0.4); }");
         sb.AppendLine("    .btn-play.playing { background: linear-gradient(135deg, #d13438 0%, #a4262c 100%); box-shadow: 0 2px 8px rgba(209,52,56,0.3); }");
         sb.AppendLine("    .btn-play.playing:hover { background: linear-gradient(135deg, #e81123 0%, #c42b1c 100%); box-shadow: 0 4px 12px rgba(209,52,56,0.4); }");
-        sb.AppendLine("    .btn-copy { background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%); color: #333; }");
+        sb.AppendLine("    .btn-copy { background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%); color: #333; padding: 3px 10px; font-size: 12px; margin-top: 4px; }");
         sb.AppendLine("    .btn-copy:hover { background: linear-gradient(135deg, #e0e0e0 0%, #d0d0d0 100%); }");
         sb.AppendLine("    .btn-copy.copied { background: linear-gradient(135deg, #4caf50 0%, #45a049 100%); color: white; }");
         sb.AppendLine("    .player-container { margin-top: 16px; display: none; }");
@@ -501,8 +501,15 @@ public class HlsWebServer : IAsyncDisposable
         sb.AppendLine("    .no-streams { text-align: center; padding: 40px; color: #6c757d; }");
         sb.AppendLine("    .no-streams-icon { font-size: 48px; margin-bottom: 12px; }");
         sb.AppendLine("    @media (max-width: 600px) {");
-        sb.AppendLine("      .stream-actions { width: 100%; justify-content: flex-start; margin-top: 12px; }");
-        sb.AppendLine("      .btn { padding: 8px 16px; font-size: 13px; }");
+        sb.AppendLine("      .stream-header { gap: 10px; }");
+        sb.AppendLine("      .stream-logo { width: 40px; height: 40px; font-size: 18px; }");
+        sb.AppendLine("      .stream-info { flex: 1; min-width: 0; }");
+        sb.AppendLine("      .stream-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }");
+        sb.AppendLine("      .stream-name-row { gap: 6px; }");
+        sb.AppendLine("      .btn-info-toggle { padding: 2px 6px; font-size: 10px; white-space: nowrap; }");
+        sb.AppendLine("      .stream-actions { flex-shrink: 0; }");
+        sb.AppendLine("      .btn-play { padding: 6px 12px; font-size: 12px; }");
+        sb.AppendLine("      .btn-play .play-text { display: none; }");
         sb.AppendLine("    }");
         sb.AppendLine("  </style>");
         sb.AppendLine("</head>");
@@ -570,12 +577,12 @@ public class HlsWebServer : IAsyncDisposable
                 sb.AppendLine($"              <span class=\"profile-badge\">{bitrateLabel} {profile.Codec}</span>");
             }
 
+            sb.AppendLine($"              <button class=\"btn btn-copy\" onclick=\"copyUrl({streamIndex}, '{streamUrl}')\">Copy URL</button>");
             sb.AppendLine($"            </div>");
             sb.AppendLine($"          </div>");
             sb.AppendLine($"        </div>");
             sb.AppendLine($"        <div class=\"stream-actions\">");
             sb.AppendLine($"          <button class=\"btn btn-play\" onclick=\"togglePlay({streamIndex})\"><span class=\"play-icon\">&#9654;</span> <span class=\"play-text\">Play</span></button>");
-            sb.AppendLine($"          <button class=\"btn btn-copy\" onclick=\"copyUrl({streamIndex}, '{streamUrl}')\">Copy URL</button>");
             sb.AppendLine($"        </div>");
             sb.AppendLine($"      </div>");
             sb.AppendLine($"      <div class=\"player-container\" id=\"player-{streamIndex}\">");
