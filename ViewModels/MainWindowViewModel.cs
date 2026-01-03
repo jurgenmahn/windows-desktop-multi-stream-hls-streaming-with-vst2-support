@@ -28,6 +28,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     private readonly AutoUpdateService _autoUpdateService;
     private readonly string _configPath;
     private readonly string _appConfigPath;
+    private System.Threading.Timer? _updateCheckTimer;
+    private bool _isUpdateDialogOpen;
     private bool _disposed;
 
     [ObservableProperty]
@@ -693,20 +695,82 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Starts periodic update checking (every hour).
+    /// </summary>
+    public void StartPeriodicUpdateCheck()
+    {
+        // Check every hour (3600000 ms), start after 1 hour (first check is done on startup)
+        _updateCheckTimer = new System.Threading.Timer(
+            _ => PeriodicUpdateCheck(),
+            null,
+            TimeSpan.FromHours(1),
+            TimeSpan.FromHours(1));
+
+        DebugLogger.Log("MainWindowViewModel", "Periodic update check started (every hour)");
+    }
+
+    /// <summary>
+    /// Periodic update check - runs on timer, completely silent on errors.
+    /// </summary>
+    private async void PeriodicUpdateCheck()
+    {
+        try
+        {
+            DebugLogger.Log("MainWindowViewModel", "Periodic update check triggered...");
+            await CheckForUpdatesSilentAsync();
+        }
+        catch (Exception ex)
+        {
+            // Silently ignore any errors during periodic update check
+            DebugLogger.Log("MainWindowViewModel", $"Periodic update check failed (ignored): {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Checks for updates silently on startup - only notifies if update is available.
     /// </summary>
     public async Task CheckForUpdatesSilentAsync()
     {
-        DebugLogger.Log("MainWindowViewModel", "Silent update check on startup...");
+        try
+        {
+            DebugLogger.Log("MainWindowViewModel", "Silent update check...");
 
-        var updateInfo = await _autoUpdateService.CheckForUpdateAsync();
+            var updateInfo = await _autoUpdateService.CheckForUpdateAsync();
 
-        if (updateInfo == null)
+            if (updateInfo == null)
+                return;
+
+            // Need to show UI on the main thread
+            await Application.Current.Dispatcher.InvokeAsync(async () =>
+            {
+                await ShowUpdateAvailableDialog(updateInfo);
+            });
+        }
+        catch (Exception ex)
+        {
+            // Silently ignore any errors - update server might be temporarily unavailable
+            DebugLogger.Log("MainWindowViewModel", $"Silent update check failed (ignored): {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Shows the update available dialog and handles the download/install flow.
+    /// </summary>
+    private async Task ShowUpdateAvailableDialog(UpdateInfo updateInfo)
+    {
+        // Prevent multiple dialogs from stacking up during long-running sessions
+        if (_isUpdateDialogOpen)
+        {
+            DebugLogger.Log("MainWindowViewModel", "Update dialog already open, skipping...");
             return;
+        }
 
-        // Build the message with optional release notes
-        var message = $"A new version ({updateInfo.Version}) is available!\n\n" +
-                      $"Current version: {_autoUpdateService.CurrentVersion}\n";
+        _isUpdateDialogOpen = true;
+        try
+        {
+            // Build the message with optional release notes
+            var message = $"A new version ({updateInfo.Version}) is available!\n\n" +
+                          $"Current version: {_autoUpdateService.CurrentVersion}\n";
 
         if (!string.IsNullOrEmpty(updateInfo.ReleaseNotes))
         {
@@ -767,15 +831,20 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             return;
 
         if (_autoUpdateService.LaunchInstaller(downloadPath))
+            {
+                if (Application.Current.MainWindow is MainWindow mainWindow)
+                {
+                    mainWindow.ForceClose();
+                }
+                else
+                {
+                    Application.Current.Shutdown();
+                }
+            }
+        }
+        finally
         {
-            if (Application.Current.MainWindow is MainWindow mainWindow)
-            {
-                mainWindow.ForceClose();
-            }
-            else
-            {
-                Application.Current.Shutdown();
-            }
+            _isUpdateDialogOpen = false;
         }
     }
 
@@ -789,6 +858,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+
+        _updateCheckTimer?.Dispose();
+        _updateCheckTimer = null;
 
         _webServer.ListenerCountChanged -= OnListenerCountChanged;
 

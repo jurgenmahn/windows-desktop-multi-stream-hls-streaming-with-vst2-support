@@ -30,8 +30,21 @@ A Windows desktop application for capturing audio, processing it through VST plu
 
 - **Built-in Web Server**
   - Serves HLS/DASH manifests and segments
-  - Built-in streams overview page
+  - Built-in streams overview page with mobile-friendly design
+  - Server status indicator with automatic connection monitoring
+  - Collapsible stream information sections
   - Configurable port and domain
+
+- **Auto-Update System**
+  - Automatic update checking on startup and hourly intervals
+  - Download progress indicator
+  - Silent update checks (no errors shown when server unavailable)
+  - One-click update installation
+
+- **System Tray Support**
+  - Minimize to system tray option
+  - Background operation while minimized
+  - Quick restore from tray icon
 
 - **Real-time Visualization**
   - Input/output spectrum analyzers
@@ -98,7 +111,10 @@ Each stream can be configured with:
 - **Buffer Size**: 256-4096 samples
 - **Encoding Profiles**: Multiple bitrate options (64-320 kbps)
 - **VST Plugins**: Chain multiple plugins for processing
+- **Presets**: Save and load stream configurations (`.sts` files)
 - **Stream Path**: Custom URL path for the stream
+
+New streams automatically load the first available preset from the `Presets/` folder.
 
 ## Building from Source
 
@@ -234,7 +250,8 @@ AudioProcessorAndStreamer/
 ├── Infrastructure/      # Utilities and helpers
 ├── Assets/              # Images and resources
 ├── FFmpeg/              # FFmpeg binaries
-└── Plugins/             # VST plugins folder
+├── Plugins/             # VST plugins folder
+└── Presets/             # Stream preset files (.sts)
 ```
 
 ## Technology Stack

@@ -88,6 +88,8 @@ public partial class MainWindow : Window
                 await System.Windows.Application.Current.Dispatcher.InvokeAsync(async () =>
                 {
                     await vm.CheckForUpdatesSilentAsync();
+                    // Start periodic update checking (every hour)
+                    vm.StartPeriodicUpdateCheck();
                 });
             });
         }
