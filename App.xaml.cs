@@ -95,40 +95,70 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        DebugLogger.Log("App", "=== Application Exiting ===");
-
-        if (_host != null)
+        try
         {
-            try
+            DebugLogger.Log("App", "=== Application Exiting ===");
+
+            if (_host != null)
             {
-                // Cleanup services - must be synchronous to ensure completion before exit
-                DebugLogger.Log("App", "Stopping stream manager...");
-                var streamManager = _host.Services.GetService<IStreamManager>();
-                streamManager?.Dispose();
-
-                DebugLogger.Log("App", "Stopping monitor service...");
-                var monitorService = _host.Services.GetService<IMonitorOutputService>();
-                monitorService?.Dispose();
-
-                DebugLogger.Log("App", "Stopping web server...");
-                var webServer = _host.Services.GetService<HlsWebServer>();
-                if (webServer != null)
+                try
                 {
-                    webServer.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
+                    // Cleanup services - must be synchronous to ensure completion before exit
+                    DebugLogger.Log("App", "Stopping stream manager...");
+                    var streamManager = _host.Services.GetService<IStreamManager>();
+                    streamManager?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Log("App", $"Error stopping stream manager: {ex.Message}");
                 }
 
-                DebugLogger.Log("App", "Stopping host...");
-                _host.StopAsync().Wait(TimeSpan.FromSeconds(5));
-                _host.Dispose();
+                try
+                {
+                    DebugLogger.Log("App", "Stopping monitor service...");
+                    var monitorService = _host.Services.GetService<IMonitorOutputService>();
+                    monitorService?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Log("App", $"Error stopping monitor service: {ex.Message}");
+                }
+
+                try
+                {
+                    DebugLogger.Log("App", "Stopping web server...");
+                    var webServer = _host.Services.GetService<HlsWebServer>();
+                    if (webServer != null)
+                    {
+                        webServer.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(5));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Log("App", $"Error stopping web server: {ex.Message}");
+                }
+
+                try
+                {
+                    DebugLogger.Log("App", "Stopping host...");
+                    _host.StopAsync().Wait(TimeSpan.FromSeconds(5));
+                    _host.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    DebugLogger.Log("App", $"Error stopping host: {ex.Message}");
+                }
 
                 DebugLogger.Log("App", "Cleanup completed");
             }
-            catch (Exception ex)
-            {
-                DebugLogger.Log("App", $"Error during cleanup: {ex.Message}");
-            }
-        }
 
-        base.OnExit(e);
+            base.OnExit(e);
+        }
+        finally
+        {
+            // Force process termination - always execute even if exceptions occur
+            DebugLogger.Log("App", "Forcing process exit");
+            Environment.Exit(0);
+        }
     }
 }
