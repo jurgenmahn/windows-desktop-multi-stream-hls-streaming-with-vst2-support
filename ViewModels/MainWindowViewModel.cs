@@ -627,8 +627,28 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         if (result != MessageBoxResult.Yes)
             return;
 
-        // Download the update
-        var downloadPath = await _autoUpdateService.DownloadUpdateAsync(updateInfo);
+        // Download the update with progress dialog
+        var progressDialog = new DownloadProgressDialog
+        {
+            Owner = Application.Current.MainWindow
+        };
+
+        string? downloadPath = null;
+        var progress = new Progress<double>(percent => progressDialog.UpdateProgress(percent));
+
+        // Start download in background and show dialog
+        var downloadTask = Task.Run(async () =>
+        {
+            downloadPath = await _autoUpdateService.DownloadUpdateAsync(updateInfo, progress);
+        });
+
+        progressDialog.Loaded += async (s, e) =>
+        {
+            await downloadTask;
+            progressDialog.Close();
+        };
+
+        progressDialog.ShowDialog();
 
         if (downloadPath == null)
         {
@@ -704,8 +724,28 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         if (result != MessageBoxResult.Yes)
             return;
 
-        // Download and install
-        var downloadPath = await _autoUpdateService.DownloadUpdateAsync(updateInfo);
+        // Download the update with progress dialog
+        var progressDialog = new DownloadProgressDialog
+        {
+            Owner = Application.Current.MainWindow
+        };
+
+        string? downloadPath = null;
+        var progress = new Progress<double>(percent => progressDialog.UpdateProgress(percent));
+
+        // Start download in background and show dialog
+        var downloadTask = Task.Run(async () =>
+        {
+            downloadPath = await _autoUpdateService.DownloadUpdateAsync(updateInfo, progress);
+        });
+
+        progressDialog.Loaded += async (s, e) =>
+        {
+            await downloadTask;
+            progressDialog.Close();
+        };
+
+        progressDialog.ShowDialog();
 
         if (downloadPath == null)
         {

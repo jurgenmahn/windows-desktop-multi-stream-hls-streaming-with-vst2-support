@@ -5,7 +5,7 @@
 ;   2. Open this file with Inno Setup Compiler and press F9
 
 #define MyAppName "Audio Processor And Streamer"
-#define MyAppVersion "0.9.17"
+#define MyAppVersion "0.9.18"
 #define MyAppPublisher "Jurgen Mahn - 9Yards"
 #define MyAppExeName "AudioProcessorAndStreamer.exe"
 #define MyAppURL "https://github.com/jurgenmahn/windows-desktop-multi-stream-hls-streaming-with-vst2-support"
