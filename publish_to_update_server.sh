@@ -23,9 +23,6 @@ echo "Arguments validated: $1, version: $2"
 
 git add . && git commit -am "$1" && git push && git tag "V$2" && git push origin tag "V$2"
 
-scp AudioProcessorAndStreamer-Setup-$2.exe 192.168.113.2:/data/server/mahn.it/software/audioprocessorandstreamer/
- 
-
 autoupdate=$(cat << EOF
 {
    "downloadUrl" : "https://www.mahn.it/software/audioprocessorandstreamer/AudioProcessorAndStreamer-Setup-$2.exe",
@@ -37,5 +34,5 @@ EOF
 
 echo "$autoupdate" > /tmp/autoupdate.json
 
-scp /tmp/autoupdate.json 192.168.113.2:/data/server/mahn.it/software/audioprocessorandstreamer/
-scp AudioProcessorAndStreamer-Setup-$2.exe 192.168.113.2:/data/server/mahn.it/software/audioprocessorandstreamer/
+scp /tmp/autoupdate.json root@192.168.113.2:/data/server/mahn.it/software/audioprocessorandstreamer/
+scp ./InstallerOutput/AudioProcessorAndStreamer-Setup-$2.exe root@192.168.113.2:/data/server/mahn.it/software/audioprocessorandstreamer/
