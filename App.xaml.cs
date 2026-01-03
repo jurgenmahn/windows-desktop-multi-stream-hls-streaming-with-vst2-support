@@ -95,6 +95,20 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        // Start a failsafe background thread that will force termination after 10 seconds
+        // This ensures the app exits even if something hangs during cleanup
+        var exitThread = new System.Threading.Thread(() =>
+        {
+            System.Threading.Thread.Sleep(10000);
+            DebugLogger.Log("App", "Failsafe timeout - forcing process termination");
+            Environment.Exit(1);
+        })
+        {
+            IsBackground = false, // Must be foreground to survive while cleanup runs
+            Name = "Failsafe Exit Thread"
+        };
+        exitThread.Start();
+
         try
         {
             DebugLogger.Log("App", "=== Application Exiting ===");
@@ -158,7 +172,15 @@ public partial class App : Application
         {
             // Force process termination - always execute even if exceptions occur
             DebugLogger.Log("App", "Forcing process exit");
-            Environment.Exit(0);
+            try
+            {
+                Environment.Exit(0);
+            }
+            catch
+            {
+                // If Environment.Exit fails, use Process.Kill as last resort
+                System.Diagnostics.Process.GetCurrentProcess().Kill();
+            }
         }
     }
 }
