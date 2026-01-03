@@ -124,17 +124,87 @@ dotnet publish -c Release -p:Platform=x64
 build-installer.bat
 ```
 
-### Publish installer
+### Publish 
 ```powershell
-  # Build with current version
-  .\build-installer.ps1
 
-  # Update version to 1.0.0 and build
-  .\build-installer.ps1 -Version 1.0.0
+# 0. Full / default build, remote publish, git commint/tag/push
+.\build-installer.ps1 -Version 1.0.0 -GitPublish -PublishRemote -ReleaseNotes "Version 1.0.0 release"
 
-  # Only create installer (skip publish step)
-  .\build-installer.ps1 -SkipBuild
+# 1. Basic build with current version (no version update)
+.\build-installer.ps1
+
+# 2. Build with version update
+.\build-installer.ps1 -Version 1.0.0
+
+# 3. Skip build, only create installer (uses existing publish output)
+.\build-installer.ps1 -SkipBuild
+
+# 4. Version update + skip build
+.\build-installer.ps1 -Version 1.0.0 -SkipBuild
+
+# 5. Custom Inno Setup path
+.\build-installer.ps1 -InnoSetupPath "C:\Program Files\Inno Setup 6\ISCC.exe"
+
+# 6. Build + Git publish (commit, tag, push)
+.\build-installer.ps1 -Version 1.0.0 -GitPublish -ReleaseNotes "Fixed critical bug in audio processing"
+
+# 7. Build + Remote publish (upload to server)
+.\build-installer.ps1 -Version 1.0.0 -PublishRemote -ReleaseNotes "Added new streaming features"
+
+# 8. Build + Git publish + Remote publish (full release workflow)
+.\build-installer.ps1 -Version 1.0.0 -GitPublish -PublishRemote -ReleaseNotes "Version 1.0.0 release"
+
+# 9. Remote publish with custom server details
+.\build-installer.ps1 -Version 1.0.0 -PublishRemote -ReleaseNotes "Update" -RemoteUser admin -RemoteServer 10.0.0.5
+
+# 10. Remote publish with password authentication
+.\build-installer.ps1 -Version 1.0.0 -PublishRemote -ReleaseNotes "Update" -RemotePassword "MySecurePassword123"
+
+# 11. Remote publish with custom path
+.\build-installer.ps1 -Version 1.0.0 -PublishRemote -ReleaseNotes "Update" -RemotePath "/var/www/downloads/"
+
+# 12. Full custom remote configuration
+.\build-installer.ps1 -Version 1.0.0 -PublishRemote -ReleaseNotes "Update" `
+    -RemoteUser deploy `
+    -RemoteServer 192.168.1.100 `
+    -RemotePassword "pass123" `
+    -RemotePath "/home/deploy/files/"
+
+# 13. Skip build + Git publish (if installer already exists)
+.\build-installer.ps1 -Version 1.0.0 -SkipBuild -GitPublish -ReleaseNotes "Hotfix"
+
+# 14. Skip build + Remote publish
+.\build-installer.ps1 -Version 1.0.0 -SkipBuild -PublishRemote -ReleaseNotes "Hotfix"
+
+# 15. All parameters combined
+.\build-installer.ps1 `
+    -Version 2.5.3 `
+    -GitPublish `
+    -PublishRemote `
+    -ReleaseNotes "Major update with new features" `
+    -RemoteUser root `
+    -RemoteServer 192.168.113.2 `
+    -RemotePath "/data/server/mahn.it/software/audioprocessorandstreamer/" `
+    -InnoSetupPath "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 ```
+
+**Parameter Summary:**
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `-Version` | string | No* | - | Version number (x.y.z format) |
+| `-SkipBuild` | switch | No | false | Skip dotnet publish step |
+| `-InnoSetupPath` | string | No | `C:\Program Files (x86)\Inno Setup 6\ISCC.exe` | Path to ISCC.exe |
+| `-GitPublish` | switch | No | false | Commit, tag, and push to git |
+| `-PublishRemote` | switch | No | false | Upload to remote server via SCP |
+| `-ReleaseNotes` | string | No** | - | Release notes for git commit and autoupdate.json |
+| `-RemoteUser` | string | No | `root` | SSH username |
+| `-RemoteServer` | string | No | `192.168.113.2` | SSH server address |
+| `-RemotePassword` | string | No | - | SSH password (uses key auth if omitted) |
+| `-RemotePath` | string | No | `/data/server/mahn.it/software/audioprocessorandstreamer/` | Remote destination path |
+
+\* Required when using `-GitPublish` or `-PublishRemote`  
+\** Required when using `-GitPublish` or `-PublishRemote`
 
 ### Auto Updates
 

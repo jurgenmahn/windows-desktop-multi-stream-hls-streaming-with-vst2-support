@@ -2,14 +2,24 @@
 # Creates a Release build and packages it into an installer
 #
 # Usage:
-#   .\build-installer.ps1                    # Build with current version
-#   .\build-installer.ps1 -Version 1.0.0     # Update version and build
-#   .\build-installer.ps1 -SkipBuild         # Only create installer (skip publish)
+#   .\build-installer.ps1                                    # Build with current version
+#   .\build-installer.ps1 -Version 1.0.0                     # Update version and build
+#   .\build-installer.ps1 -SkipBuild                         # Only create installer (skip publish)
+#   .\build-installer.ps1 -Version 1.0.0 -GitPublish         # Build and git commit/tag/push
+#   .\build-installer.ps1 -Version 1.0.0 -PublishRemote      # Build and upload to server
+#   .\build-installer.ps1 -Version 1.0.0 -GitPublish -PublishRemote -ReleaseNotes "Fixed bugs"
 
 param(
     [string]$Version,
     [switch]$SkipBuild,
-    [string]$InnoSetupPath = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+    [string]$InnoSetupPath = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+    [switch]$GitPublish,
+    [switch]$PublishRemote,
+    [string]$ReleaseNotes,
+    [string]$RemoteUser = "root",
+    [string]$RemoteServer = "192.168.113.2",
+    [string]$RemotePassword,
+    [string]$RemotePath = "/data/server/mahn.it/software/audioprocessorandstreamer/"
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,6 +29,25 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Audio Processor And Streamer - Build" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
+
+# Validate parameters
+if ($GitPublish -or $PublishRemote) {
+    if (-not $Version) {
+        Write-Host "ERROR: -Version is required when using -GitPublish or -PublishRemote" -ForegroundColor Red
+        exit 1
+    }
+    
+    if (-not $ReleaseNotes) {
+        Write-Host "ERROR: -ReleaseNotes is required when using -GitPublish or -PublishRemote" -ForegroundColor Red
+        exit 1
+    }
+    
+    # Validate version format (x.y.z)
+    if ($Version -notmatch '^\d+\.\d+\.\d+$') {
+        Write-Host "ERROR: Invalid version format. Use x.y.z (e.g., 1.0.0)" -ForegroundColor Red
+        exit 1
+    }
+}
 
 # Step 0: Update version if specified
 if ($Version) {
@@ -147,10 +176,134 @@ Write-Host ""
 
 # Show output location
 $OutputDir = Join-Path $ScriptDir "InstallerOutput"
+$Installer = $null
 if (Test-Path $OutputDir) {
     $Installer = Get-ChildItem $OutputDir -Filter "*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if ($Installer) {
         Write-Host "Installer created: $($Installer.FullName)" -ForegroundColor Green
         Write-Host "Size: $([math]::Round($Installer.Length / 1MB, 2)) MB" -ForegroundColor Gray
     }
+}
+
+# Step 3: Git commit/tag and push
+if ($GitPublish) {
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "Publishing to Git" -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    
+    Write-Host "[3/3] Committing and pushing to git..." -ForegroundColor Yellow
+    
+    Push-Location $ScriptDir
+    try {
+        # Git operations
+        git add .
+        if ($LASTEXITCODE -ne 0) { throw "git add failed" }
+        
+        git commit -am $ReleaseNotes
+        if ($LASTEXITCODE -ne 0) { throw "git commit failed" }
+        
+        git push
+        if ($LASTEXITCODE -ne 0) { throw "git push failed" }
+        
+        $tag = "V$Version"
+        git tag $tag
+        if ($LASTEXITCODE -ne 0) { throw "git tag failed" }
+        
+        git push origin tag $tag
+        if ($LASTEXITCODE -ne 0) { throw "git push tag failed" }
+        
+        Write-Host "Git operations completed (tagged as $tag)" -ForegroundColor Green
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+# Step 4: Upload to remote server
+if ($PublishRemote) {
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "Publishing to Remote Server" -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    
+    Write-Host "Creating autoupdate.json and uploading to server..." -ForegroundColor Yellow
+    
+    # Create autoupdate.json
+    $autoUpdateJson = @{
+        downloadUrl = "https://www.mahn.it/software/audioprocessorandstreamer/AudioProcessorAndStreamer-Setup-$Version.exe"
+        releaseNotes = $ReleaseNotes
+        version = $Version
+    } | ConvertTo-Json
+    
+    $tempJsonPath = Join-Path $env:TEMP "autoupdate.json"
+    Set-Content -Path $tempJsonPath -Value $autoUpdateJson -NoNewline
+    
+    Write-Host "  Created: $tempJsonPath" -ForegroundColor Gray
+    
+    # Verify installer exists
+    if (-not $Installer) {
+        Write-Host "ERROR: Installer file not found" -ForegroundColor Red
+        exit 1
+    }
+    
+    $installerFileName = "AudioProcessorAndStreamer-Setup-$Version.exe"
+    $installerPath = $Installer.FullName
+    $remoteHost = "${RemoteUser}@${RemoteServer}"
+    
+    Write-Host "Uploading files to $remoteHost..." -ForegroundColor Yellow
+    
+    # Build scp command based on whether password is provided
+    if ($RemotePassword) {
+        # Using sshpass (requires sshpass to be installed)
+        # Upload autoupdate.json
+        $env:SSHPASS = $RemotePassword
+        sshpass -e scp $tempJsonPath "${remoteHost}:${RemotePath}"
+        if ($LASTEXITCODE -ne 0) { throw "scp autoupdate.json failed" }
+        Write-Host "  Uploaded: autoupdate.json" -ForegroundColor Gray
+        
+        # Upload installer
+        sshpass -e scp $installerPath "${remoteHost}:${RemotePath}"
+        if ($LASTEXITCODE -ne 0) { throw "scp installer failed" }
+        Write-Host "  Uploaded: $installerFileName" -ForegroundColor Gray
+        
+        Remove-Item env:SSHPASS
+    }
+    else {
+        # Using SSH key authentication (no password)
+        # Upload autoupdate.json
+        scp $tempJsonPath "${remoteHost}:${RemotePath}"
+        if ($LASTEXITCODE -ne 0) { throw "scp autoupdate.json failed" }
+        Write-Host "  Uploaded: autoupdate.json" -ForegroundColor Gray
+        
+        # Upload installer
+        scp $installerPath "${remoteHost}:${RemotePath}"
+        if ($LASTEXITCODE -ne 0) { throw "scp installer failed" }
+        Write-Host "  Uploaded: $installerFileName" -ForegroundColor Gray
+    }
+    
+    # Clean up temp file
+    Remove-Item $tempJsonPath -ErrorAction SilentlyContinue
+    
+    Write-Host ""
+    Write-Host "Remote publishing completed!" -ForegroundColor Green
+}
+
+# Final summary
+if ($GitPublish -or $PublishRemote) {
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "Publishing Summary" -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Version: $Version" -ForegroundColor Green
+    if ($GitPublish) {
+        Write-Host "  Git tag: V$Version" -ForegroundColor Gray
+    }
+    if ($PublishRemote) {
+        Write-Host "  Download: https://www.mahn.it/software/audioprocessorandstreamer/AudioProcessorAndStreamer-Setup-$Version.exe" -ForegroundColor Gray
+    }
+    Write-Host ""
 }

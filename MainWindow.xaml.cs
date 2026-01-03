@@ -261,6 +261,8 @@ public partial class MainWindow : Window
         _forceClose = true;
         _isExiting = true;
         Close();
+        // Explicitly shutdown the application to stop all background services (IHost, web server, etc.)
+        System.Windows.Application.Current.Shutdown();
     }
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -322,5 +324,8 @@ public partial class MainWindow : Window
             vm.SaveStreamsToConfig();
             vm.Dispose();
         }
+
+        // Explicitly shutdown the application to stop all background services (IHost, web server, etc.)
+        System.Windows.Application.Current.Shutdown();
     }
 }
