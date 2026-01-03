@@ -286,6 +286,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void AddStream()
     {
+        // Find first preset file in Presets folder
+        var presetsFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Presets");
+        string? defaultPreset = null;
+        if (Directory.Exists(presetsFolder))
+        {
+            defaultPreset = Directory.GetFiles(presetsFolder, "*.sts")
+                .OrderBy(f => f)
+                .FirstOrDefault();
+            // Store as relative path for portability
+            if (defaultPreset != null)
+            {
+                defaultPreset = Path.Combine("Presets", Path.GetFileName(defaultPreset));
+            }
+        }
+
         var config = new StreamConfiguration
         {
             Name = $"Stream {Streams.Count + 1}",
@@ -296,7 +311,8 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
                 {
                     PluginPath = "Plugins/vst_stereo_tool_64.dll",
                     PluginName = "Stereo Tool",
-                    Order = 0
+                    Order = 0,
+                    PresetFilePath = defaultPreset
                 }
             },
             EncodingProfiles = new List<EncodingProfile>
@@ -546,9 +562,12 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             {
                 AppConfig = new AppConfiguration
                 {
+                    FfmpegPath = _config.FfmpegPath,
                     BaseDomain = _config.BaseDomain,
                     WebServerPort = _config.WebServerPort,
                     HlsOutputDirectory = _config.HlsOutputDirectory,
+                    HlsSegmentDuration = _config.HlsSegmentDuration,
+                    HlsPlaylistSize = _config.HlsPlaylistSize,
                     LazyProcessing = _config.LazyProcessing,
                     StreamsPagePath = _config.StreamsPagePath,
                     DebugAudioEnabled = _config.DebugAudioEnabled,

@@ -124,6 +124,30 @@ dotnet publish -c Release -p:Platform=x64
 build-installer.bat
 ```
 
+### Publish installer
+```powershell
+  # Build with current version
+  .\build-installer.ps1
+
+  # Update version to 1.0.0 and build
+  .\build-installer.ps1 -Version 1.0.0
+
+  # Only create installer (skip publish step)
+  .\build-installer.ps1 -SkipBuild
+```
+
+### Auto Updates
+
+autoupdates.json
+
+```json
+  {
+    "version": "0.9.8",
+    "downloadUrl": "https://www.mahn.it/software/audioprocessorandstreamer/AudioProcessorAndStreamer-Setup-0.9.8.exe",
+    "releaseNotes": "Added improved debug logging"
+  }
+```
+
 ### Project Structure
 
 ```

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using AudioProcessorAndStreamer.Models;
 using AudioProcessorAndStreamer.Services.Audio;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -150,6 +151,21 @@ public partial class ConfigurationViewModel : ObservableObject
     [RelayCommand]
     private void AddStream()
     {
+        // Find first preset file in Presets folder
+        var presetsFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Presets");
+        string? defaultPreset = null;
+        if (Directory.Exists(presetsFolder))
+        {
+            defaultPreset = Directory.GetFiles(presetsFolder, "*.sts")
+                .OrderBy(f => f)
+                .FirstOrDefault();
+            // Store as relative path for portability
+            if (defaultPreset != null)
+            {
+                defaultPreset = Path.Combine("Presets", Path.GetFileName(defaultPreset));
+            }
+        }
+
         var newStream = new StreamConfiguration
         {
             Name = $"Stream {Streams.Count + 1}",
@@ -160,7 +176,8 @@ public partial class ConfigurationViewModel : ObservableObject
                 {
                     PluginPath = "Plugins/vst_stereo_tool_64.dll",
                     PluginName = "Stereo Tool",
-                    Order = 0
+                    Order = 0,
+                    PresetFilePath = defaultPreset
                 }
             },
             EncodingProfiles = new List<EncodingProfile>

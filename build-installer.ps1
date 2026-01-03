@@ -1,7 +1,13 @@
 # Build script for Audio Processor And Streamer
 # Creates a Release build and packages it into an installer
+#
+# Usage:
+#   .\build-installer.ps1                    # Build with current version
+#   .\build-installer.ps1 -Version 1.0.0     # Update version and build
+#   .\build-installer.ps1 -SkipBuild         # Only create installer (skip publish)
 
 param(
+    [string]$Version,
     [switch]$SkipBuild,
     [string]$InnoSetupPath = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 )
@@ -14,9 +20,56 @@ Write-Host "Audio Processor And Streamer - Build" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
+# Step 0: Update version if specified
+if ($Version) {
+    # Validate version format (x.y.z)
+    if ($Version -notmatch '^\d+\.\d+\.\d+$') {
+        Write-Host "ERROR: Invalid version format. Use x.y.z (e.g., 1.0.0)" -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "[0/3] Updating version to $Version..." -ForegroundColor Yellow
+
+    # Update .csproj file
+    $CsprojFile = Join-Path $ScriptDir "AudioProcessorAndStreamer.csproj"
+    if (Test-Path $CsprojFile) {
+        $csprojContent = Get-Content $CsprojFile -Raw
+
+        # Update Version, AssemblyVersion, and FileVersion
+        $csprojContent = $csprojContent -replace '<Version>[^<]+</Version>', "<Version>$Version</Version>"
+        $csprojContent = $csprojContent -replace '<AssemblyVersion>[^<]+</AssemblyVersion>', "<AssemblyVersion>$Version.0</AssemblyVersion>"
+        $csprojContent = $csprojContent -replace '<FileVersion>[^<]+</FileVersion>', "<FileVersion>$Version.0</FileVersion>"
+
+        Set-Content $CsprojFile $csprojContent -NoNewline
+        Write-Host "  Updated: $CsprojFile" -ForegroundColor Gray
+    }
+    else {
+        Write-Host "WARNING: .csproj file not found at $CsprojFile" -ForegroundColor Yellow
+    }
+
+    # Update Installer.iss file
+    $IssFile = Join-Path $ScriptDir "Installer.iss"
+    if (Test-Path $IssFile) {
+        $issContent = Get-Content $IssFile -Raw
+
+        # Update #define MyAppVersion
+        $issContent = $issContent -replace '#define MyAppVersion "[^"]+"', "#define MyAppVersion `"$Version`""
+
+        Set-Content $IssFile $issContent -NoNewline
+        Write-Host "  Updated: $IssFile" -ForegroundColor Gray
+    }
+    else {
+        Write-Host "WARNING: Installer.iss file not found at $IssFile" -ForegroundColor Yellow
+    }
+
+    Write-Host "Version updated to $Version" -ForegroundColor Green
+    Write-Host ""
+}
+
 # Step 1: Publish the project (creates self-contained deployment in publish folder)
+$stepPrefix = if ($Version) { "[1/3]" } else { "[1/2]" }
 if (-not $SkipBuild) {
-    Write-Host "[1/2] Publishing Release configuration..." -ForegroundColor Yellow
+    Write-Host "$stepPrefix Publishing Release configuration..." -ForegroundColor Yellow
 
     Push-Location $ScriptDir
     try {
@@ -39,7 +92,8 @@ else {
 Write-Host ""
 
 # Step 2: Create installer
-Write-Host "[2/2] Creating installer..." -ForegroundColor Yellow
+$installerStepPrefix = if ($Version) { "[2/3]" } else { "[2/2]" }
+Write-Host "$installerStepPrefix Creating installer..." -ForegroundColor Yellow
 
 # Check if Inno Setup is installed
 if (-not (Test-Path $InnoSetupPath)) {
