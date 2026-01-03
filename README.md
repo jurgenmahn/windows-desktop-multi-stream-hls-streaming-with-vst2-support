@@ -1,3 +1,5 @@
+![Logo](Assets/logo.png)
+
 # Audio Processor And Streamer
 
 A Windows desktop application for capturing audio, processing it through VST plugins, and streaming it via HLS/DASH protocols.
@@ -276,3 +278,16 @@ MIT License - See [LICENSE](LICENSE) file for details.
 - [FFmpeg](https://ffmpeg.org/) - Multimedia framework
 - [hls.js](https://github.com/video-dev/hls.js) - HLS client library
 - [dash.js](https://github.com/Dash-Industry-Forum/dash.js) - DASH client library
+
+
+## 🚀 Built with human ingenuity & a dash of AI wizardry
+
+This project emerged from late-night coding sessions, unexpected inspiration, and the occasional debugging dance. Every line of code has a story behind it.
+
+Found a bug? Have a wild idea? The issues tab is your canvas.
+
+Authored By: [👨‍💻 Jurgen Mahn](https://github.com/jurgenmahn) with some help from AI code monkies [Claude code](https://claude.ai)
+
+*"Sometimes the code writes itself. Other times, we collaborate with the machines."*
+
+⚡ Happy hacking, fellow explorer ⚡
