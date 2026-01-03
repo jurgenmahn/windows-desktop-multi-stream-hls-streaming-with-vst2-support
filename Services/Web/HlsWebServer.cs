@@ -484,6 +484,13 @@ public class HlsWebServer : IAsyncDisposable
         sb.AppendLine("    .quality-label { font-size: 12px; color: #6c757d; margin-right: 4px; }");
         sb.AppendLine("    .no-streams { text-align: center; padding: 40px; color: #6c757d; }");
         sb.AppendLine("    .no-streams-icon { font-size: 48px; margin-bottom: 12px; }");
+        sb.AppendLine("    @media (max-width: 600px) {");
+        sb.AppendLine("      .stream-header { flex-wrap: wrap; }");
+        sb.AppendLine("      .stream-info { flex-basis: calc(100% - 80px); }");
+        sb.AppendLine("      .stream-profiles { display: block; width: 100%; margin-top: 8px; padding-left: 80px; margin-left: -80px; }");
+        sb.AppendLine("      .stream-actions { width: 100%; justify-content: flex-start; margin-top: 12px; padding-left: 80px; }");
+        sb.AppendLine("      .btn { padding: 8px 16px; font-size: 13px; }");
+        sb.AppendLine("    }");
         sb.AppendLine("  </style>");
         sb.AppendLine("</head>");
         sb.AppendLine("<body>");
